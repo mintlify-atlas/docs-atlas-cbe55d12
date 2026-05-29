@@ -31,8 +31,8 @@ const alumniData = [
   { name: "Anay Singh",         year: 2015, degree: "Btech Computer Science", field: "Software Engineering" },
   { name: "Vishal Chauhan",     year: 2018, degree: "Btech Computer Science", field: "Freelance web developer" },
   { name: "Sandhya Yadav",      year: 2020, degree: "Btech Computer Science", field: "Data Analysis" },
-  { name: "Tushar Mukherjee",   year: 2017, degree: "Btech Computer Science", field: "Devops" },
-  { name: "Vishal Kumar",       year: 2019, degree: "BA Economics",           field: "Junior Android Developer" },
+  { name: "Tushar Mukherjee",   year: 2017, degree: "Btech Computer Science", field: "Devops " },
+  { name: "Vishal Kumar",       year: 2019, degree: "BA Economics",           field: "Junior Android Devloper" },
 ];
 ```
 
@@ -42,13 +42,6 @@ const alumniData = [
 | `year`   | Number | Graduation year                               |
 | `degree` | String | Degree programme (e.g., Btech Computer Science)|
 | `field`  | String | Current professional field or job title        |
-
-<Note>
-  The people recommender microservice (at `/recom`) also surfaces connection
-  suggestions based on shared professional interests. See the
-  [Recommender Overview](/recommender/overview) for details on how it
-  complements the directory.
-</Note>
 
 ## Search and Filtering
 
@@ -106,7 +99,3 @@ window.onload = function () {
 ```
 
 On initial page load, `window.onload` calls `loadAlumni(alumniData)` with the full unfiltered dataset, so all alumni are visible before the user types anything.
-
-## Integration with the Recommender
-
-The people recommender microservice (accessible at `/recom`) provides an alternative discovery path. Rather than free-text search, it analyses shared technical interests across profiles and surfaces suggested connections automatically. See the [Recommender Overview](/recommender/overview) for integration details.

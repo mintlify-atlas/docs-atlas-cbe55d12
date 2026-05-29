@@ -22,21 +22,31 @@ app.get("/clubs", (req, res) => {
     **Technical Society** — TechnoX is a vibrant college technical society that fosters innovation, hosts workshops, and organizes events to enhance technical skills and knowledge among students. Links to `/techno` for the full club detail page.
   </Card>
   <Card title="Bizeco" icon="briefcase">
-    **Entrepreneurship Society** — A dynamic college entrepreneurship society fostering innovation, providing resources, and mentoring students to develop and launch impactful startup ideas and ventures.
+    **Entrepreneurship Society** — A dynamic college entrepreneurship society fostering innovation, providing resources, and mentoring students to develop and launch impactful startup ideas and ventures. ⚠️ Club detail link is currently broken (see note below).
   </Card>
   <Card title="NSS Club" icon="hands-helping">
-    **Social Service** — The NSS Club promotes community service through volunteerism, addressing social issues, and fostering a spirit of empathy and social responsibility among students.
+    **Social Service** — The NSS Club promotes community service through volunteerism, addressing social issues, and fostering a spirit of empathy and social responsibility among students. ⚠️ Club detail link is currently broken (see note below).
   </Card>
   <Card title="Niyantran" icon="spa">
-    **Yoga & Wellness Club** — Niyantran promotes holistic well-being through yoga, mindfulness, and wellness practices for a balanced and healthy student life.
+    **Yoga & Wellness Club** — Niyantran promotes holistic well-being through yoga, mindfulness, and wellness practices for a balanced and healthy student life. ⚠️ Club detail link is currently broken (see note below).
   </Card>
 </CardGroup>
 
+<Warning>
+  In `clubs.hbs`, only the **TechnoX** card links to the correct Express route
+  (`/techno`). The **Bizeco**, **NSS Club**, and **Niyantran** cards all use
+  `href="techno.html"` — a bare HTML file path that does not correspond to any
+  route registered in `src/index.js`. Clicking those three cards will produce a
+  404 in the Express app. Each club needs its own route and template (e.g.
+  `GET /bizeco`, `GET /nss`, `GET /niyantran`) or the hrefs should be updated to
+  point to a shared club detail route.
+</Warning>
+
 ```hbs
-<!-- tempelates/clubs.hbs — clubs grid (excerpt) -->
+<!-- tempelates/clubs.hbs — clubs grid -->
 <div class="grid">
   <div class="box">
-    <a href="/techno">
+    <a href="/techno">  <!-- ✅ valid Express route -->
       <img src="images/clubs/tech.png" alt="TechnoX">
       <h3><b>TechnoX</b><br><i>Technical Society</i></h3>
       <p>TechnoX is a vibrant college technical society that fosters innovation,
@@ -45,7 +55,7 @@ app.get("/clubs", (req, res) => {
     </a>
   </div>
   <div class="box">
-    <a href="techno.html">
+    <a href="techno.html">  <!-- ⚠️ broken — no matching Express route -->
       <img src="images/clubs/entre.png" alt="Bizeco">
       <h3><b>Bizeco</b><br><i>Entrepreneurship Society</i></h3>
       <p>Bizeco is a dynamic college entrepreneurship society fostering innovation,
@@ -53,7 +63,24 @@ app.get("/clubs", (req, res) => {
          impactful startup ideas and ventures.</p>
     </a>
   </div>
-  <!-- NSS Club and Niyantran follow the same pattern -->
+  <div class="box">
+    <a href="techno.html">  <!-- ⚠️ broken — no matching Express route -->
+      <img src="images/clubs/social.png" alt="NSS Club">
+      <h3><b>NSS Club</b><br><i>Social Service</i></h3>
+      <p>The NSS Club at our college promotes community service through volunteerism,
+         addressing social issues, and fostering a spirit of empathy and social
+         responsibility among students.</p>
+    </a>
+  </div>
+  <div class="box">
+    <a href="techno.html">  <!-- ⚠️ broken — no matching Express route -->
+      <img src="images/clubs/yoga.png" alt="Niyantran">
+      <h3><b>Niyantran</b><br><i>Yoga &amp; Wellness Club</i></h3>
+      <p>Niyantran is the college Yoga &amp; Wellness Club, promoting holistic
+         well-being through yoga, mindfulness, and wellness practices for a
+         balanced and healthy student life.</p>
+    </a>
+  </div>
 </div>
 ```
 

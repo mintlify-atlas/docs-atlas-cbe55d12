@@ -96,7 +96,7 @@ The profile footer includes two action buttons: **Edit Profile** and **Contact A
 
 ### Student Profile (`/stuprofile`)
 
-The student profile renders `stuprofile.hbs` and uses three Handlebars variables to inject dynamic data that originates from the signup form:
+The student profile renders `stuprofile.hbs` and declares three Handlebars variables intended to show the student's name, email, and graduation year:
 
 ```hbs
 <!-- tempelates/stuprofile.hbs — dynamic fields -->
@@ -107,10 +107,14 @@ The student profile renders `stuprofile.hbs` and uses three Handlebars variables
 <li><strong>Graduation Year:</strong> {{passing}}</li>
 ```
 
-| Handlebars Variable | Source Field     | Description                  |
-|---------------------|------------------|------------------------------|
-| `{{naming}}`        | `req.body.username`  | Student's display name       |
-| `{{emailing}}`      | `req.body.email`     | Student's email address      |
-| `{{passing}}`       | `req.body.passOutYear` | Expected graduation year   |
+| Handlebars Variable | Intended Value         | Description                  |
+|---------------------|------------------------|------------------------------|
+| `{{naming}}`        | Student's display name | Rendered in the welcome heading and Full Name field |
+| `{{emailing}}`      | Student's email address| Rendered in the Email field  |
+| `{{passing}}`       | Expected graduation year | Rendered in the Graduation Year field |
+
+<Warning>
+  The active `GET /stuprofile` route in `src/index.js` calls `res.render("stuprofile")` with **no data object**, so `{{naming}}`, `{{emailing}}`, and `{{passing}}` all render as empty strings at runtime. The registration handler that would have supplied these values (reading `req.body.username`, `req.body.email`, and `req.body.passOutYear`) is currently **commented out** in `index.js`. Until that handler is restored and wired up, the student profile page will display blank fields.
+</Warning>
 
 The remaining profile fields (College Name, Batch, Course, Section, Club, Recent Activity) are present in the template but not yet populated dynamically.

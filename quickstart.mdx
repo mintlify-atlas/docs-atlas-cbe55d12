@@ -11,16 +11,16 @@ This guide walks you through getting a fully functional GradGather instance runn
   <Step title="Prerequisites">
     Make sure the following are available on your machine before you begin:
 
-    - **Node.js 18 or later** — [nodejs.org/en/download](https://nodejs.org/en/download)
+    - **Node.js** — [nodejs.org/en/download](https://nodejs.org/en/download)
     - **npm** — bundled with Node.js
-    - **MongoDB** — either a local installation running on the default port (`27017`) or a hosted [MongoDB Atlas](https://www.mongodb.com/atlas) cluster URI
+    - **MongoDB** — a local installation running on the default port (`27017`) is required; the connection string is hard-coded in `src/mongo.js` as `mongodb://localhost:27017/LoginFormPractice`
 
     Verify your versions:
 
     ```bash
-    node --version   # should print v18.x.x or higher
+    node --version
     npm --version
-    mongod --version # if running MongoDB locally
+    mongod --version
     ```
   </Step>
 
@@ -61,9 +61,6 @@ This guide walks you through getting a fully functional GradGather instance runn
     # Server
     PORT=3000
 
-    # MongoDB — defaults to local instance if omitted
-    MONGODB_URI=mongodb://localhost:27017/LoginFormPractice
-
     # PayPal REST SDK (required for the donation feature)
     PAYPAL_MODE=sandbox
     PAYPAL_CLIENT_KEY=your_paypal_client_id_here
@@ -71,14 +68,8 @@ This guide walks you through getting a fully functional GradGather instance runn
     ```
 
     <Note>
-      The default MongoDB connection string hard-coded in `src/mongo.js` is `mongodb://localhost:27017/LoginFormPractice`. If you run MongoDB locally with default settings and omit `MONGODB_URI`, the application will connect to this database automatically without any additional configuration.
+      The MongoDB connection string is hard-coded directly in `src/mongo.js` as `mongodb://localhost:27017/LoginFormPractice`. It is not read from an environment variable. Make sure MongoDB is running locally on the default port before starting the server.
     </Note>
-
-    To use MongoDB Atlas instead, replace the `MONGODB_URI` value with your Atlas connection string:
-
-    ```env
-    MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/LoginFormPractice?retryWrites=true&w=majority
-    ```
 
     For PayPal credentials, create a REST app in the [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/) and copy the **Client ID** and **Secret** for the sandbox environment.
   </Step>
@@ -109,7 +100,7 @@ This guide walks you through getting a fully functional GradGather instance runn
     port connected
     ```
 
-    If you see `failed` instead of `mongoose connected`, check that your MongoDB instance is running and that the connection string in `.env` (or the default in `src/mongo.js`) is reachable.
+    If you see `failed` instead of `mongoose connected`, check that your local MongoDB instance is running on port `27017`.
   </Step>
 
   <Step title="Open in your browser">
@@ -119,15 +110,24 @@ This guide walks you through getting a fully functional GradGather instance runn
 
     | Path | Description |
     |---|---|
-    | `/` | BridgeU home / landing page |
+    | `/` | BridgeU home page |
     | `/2signup` | Role selection (Student or Alumni) |
     | `/signup` | Account registration form |
     | `/login` | Login form |
+    | `/landing` | Post-login landing page |
+    | `/dashboard` | User dashboard |
+    | `/studash` | Student dashboard |
     | `/directory` | Alumni directory |
     | `/events` | Events listing |
     | `/clubs` | Clubs listing |
     | `/connect` | Connection hub |
+    | `/userprofile` | User profile page |
+    | `/stuprofile` | Student profile page |
+    | `/techno` | Techno page |
     | `/donation` | Donation page |
+    | `/paymentGateway` | Payment gateway page |
+    | `/success` | Payment success page |
+    | `/cancel` | Payment cancelled page |
   </Step>
 
 </Steps>

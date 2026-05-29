@@ -55,6 +55,13 @@ The full end-to-end PayPal payment sequence involves five routes spread across t
   </Step>
   <Step title="Payment Gateway page rendered">
     `/paymentGateway` renders `paymentGateway.hbs`, which presents a form where the user enters an amount and selects a payment gateway (PayPal, Stripe, Razorpay, or PayU). Submitting the form sends a `POST` request to `/pay`.
+
+    <Warning>
+      The `paymentGateway.hbs` form displays four gateway options — PayPal,
+      Stripe, Razorpay, and PayU — but `paymentController.js` only implements
+      the **PayPal** flow. Selecting any other gateway and submitting the form
+      will not produce a working checkout. Only the PayPal path is wired up end-to-end.
+    </Warning>
   </Step>
   <Step title="PayPal payment created">
     The `POST /pay` handler in `paymentController.js` calls `paypal.payment.create()` with the `create_payment_json` payload. On success, it iterates over the returned links and redirects the user to PayPal's `approval_url`.

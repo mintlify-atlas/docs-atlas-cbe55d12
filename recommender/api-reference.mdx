@@ -129,15 +129,15 @@ The recommender reads its data at startup, so adding a new person is a matter of
 Each row must follow this schema exactly (column order matters):
 
 ```csv
-Person,Machine Learning,Data Science,Python,Web Development,JavaScript,React,HTML,CSS,AI,Natural Language Processing,Deep Learning,Mysql
+Person,Machine Learning,Data Science,Python,Web Development,JavaScript,React,HTML,CSS,AI,Natural Language Processing,Deep Learning
 ```
 
-Set each interest column to `1` (has the interest) or `0` (does not). The `Mysql` column is present in `people/database.csv` but **not** in `tempelates/people_recommender_dataset.csv` — make sure you add to the correct file for the server instance you are running.
+This is the schema for `tempelates/people_recommender_dataset.csv` — eleven interest columns, no `Mysql`. The alternative dataset at `people/database.csv` adds a twelfth `Mysql` column; make sure you add to the correct file for the server instance you are running.
 
 ### Example: Adding a New Profile
 
 ```csv
-Jordan Blake,1,1,1,0,0,0,0,0,1,1,1,0
+Jordan Blake,1,1,1,0,0,0,0,0,1,1,1
 ```
 
 This entry marks Jordan Blake as interested in Machine Learning, Data Science, Python, AI, Natural Language Processing, and Deep Learning, with all other flags set to `0`.

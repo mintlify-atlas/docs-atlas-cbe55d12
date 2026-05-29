@@ -38,9 +38,6 @@ GradGather supports two distinct user types, each with their own onboarding path
   <Card title="Donations" icon="heart" href="/features/donations">
     Alumni can contribute financially to the institution through a PayPal-powered donation gateway with sandbox and live modes.
   </Card>
-  <Card title="People Recommender" icon="wand-magic-sparkles" href="/recommender/overview">
-    A Flask microservice that analyses user profiles and suggests relevant alumni or students to connect with.
-  </Card>
 </CardGroup>
 
 ## Tech Stack
@@ -49,12 +46,11 @@ GradGather is built entirely with open-source, widely-adopted technologies:
 
 | Layer | Technology |
 |---|---|
-| **Runtime** | Node.js 18+ |
+| **Runtime** | Node.js |
 | **Web Framework** | Express 4 |
 | **Templating** | Handlebars (HBS) — server-side rendering |
 | **Database** | MongoDB, accessed via Mongoose ODM |
 | **Payment Gateway** | PayPal REST SDK (`paypal-rest-sdk`) |
-| **Recommendation Engine** | Flask microservice (Python) |
 | **Configuration** | dotenv |
 | **Development** | nodemon for auto-reload |
 

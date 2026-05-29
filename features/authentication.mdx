@@ -164,6 +164,17 @@ const LogInCollection = new mongoose.model('LogInCollection', logInSchema);
 module.exports = LogInCollection;
 ```
 
+<Warning>
+  There is a **field name mismatch** between the Mongoose schema and the active
+  `POST /signup` handler. The schema declares `username` as the required string
+  field, but the handler saves `{ name: req.body.name, password: req.body.password }` —
+  using `name`, not `username`. Mongoose will not enforce the `username` field
+  against a document that only carries `name`, so documents are inserted without
+  the schema-declared field. Before shipping, align the schema field name with
+  the handler (rename `username` → `name` in `mongo.js`, or rename `name` →
+  `username` throughout `index.js` and all Handlebars templates).
+</Warning>
+
 ## Routes Reference
 
 | Method | Path     | Description                        |

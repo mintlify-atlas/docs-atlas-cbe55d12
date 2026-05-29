@@ -4,7 +4,7 @@ sidebarTitle: "Configuration"
 description: "Set up environment variables, connect GradGather to MongoDB, and configure PayPal credentials for the donation payment gateway."
 ---
 
-GradGather centralises all runtime configuration through environment variables loaded by the [`dotenv`](https://github.com/motdotla/dotenv) package. When the Express server starts, `src/index.js` calls `require("dotenv").config()` before any routes are registered, making every variable defined in a root-level `.env` file available on `process.env` throughout the application. This means no credentials or environment-specific values need to be hard-coded in source files — you control the behaviour of each deployment entirely through that single file.
+GradGather centralises all runtime configuration through environment variables loaded by the [`dotenv`](https://github.com/motdotla/dotenv) package. When the Express server starts, `src/index.js` calls `require("dotenv").config()` before any routes are registered, making every variable defined in a root-level `.env` file available on `process.env` throughout the application.
 
 ---
 
@@ -28,11 +28,15 @@ The table below documents every environment variable GradGather reads at runtime
   The **Secret Key** (client secret) of your PayPal REST application. Keep this value confidential — never commit it to version control. Rotate it from the PayPal Developer Dashboard if it is ever exposed.
 </ParamField>
 
+<Note>
+  GradGather does **not** read a `MONGODB_URI` environment variable. The MongoDB connection string is hard-coded in `src/mongo.js` as `mongodb://localhost:27017/LoginFormPractice`. To change the database connection you must edit that file directly.
+</Note>
+
 ---
 
 ## MongoDB Connection
 
-GradGather connects to MongoDB using [Mongoose](https://mongoosejs.com/), a schema-based ODM for Node.js. The connection is established in `src/mongo.js`, which is `require`-d by `src/index.js` at startup. The connection string is currently hard-coded in that file and targets a local MongoDB instance:
+GradGather connects to MongoDB using [Mongoose](https://mongoosejs.com/), a schema-based ODM for Node.js. The connection is established in `src/mongo.js`, which is `require`-d by `src/index.js` at startup. The connection string is hard-coded in that file and targets a local MongoDB instance:
 
 ```js
 // src/mongo.js
@@ -47,13 +51,14 @@ mongoose.connect("mongodb://localhost:27017/LoginFormPractice")
   })
 ```
 
-The database name is `LoginFormPractice`. If MongoDB is running locally with default settings, no additional configuration is needed.
+The database name is `LoginFormPractice`. MongoDB must be running locally on the default port `27017` for the application to connect successfully. There is no environment-variable override for the connection string in the current source — any change requires editing `src/mongo.js` directly.
 
 ### LogInCollection Schema
 
 `src/mongo.js` defines a single Mongoose model, `LogInCollection`, used to persist user credentials:
 
 ```js
+// src/mongo.js
 const logInSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -70,24 +75,66 @@ const LogInCollection = new mongoose.model('LogInCollection', logInSchema)
 module.exports = LogInCollection
 ```
 
-Both `username` and `password` are required `String` fields. The exported `LogInCollection` model is imported directly into `src/index.js` and used in the `POST /signup` and `POST /login` route handlers to create and verify user accounts.
+The schema declares `username` and `password` as required `String` fields.
+
+<Warning>
+  **Schema / handler field mismatch.** The `POST /signup` and `POST /login` handlers in `src/index.js` read `req.body.name` and write `{ name, password }` to the database — they use the field key `name`, not `username`. Because the Mongoose schema defines `username` (not `name`), the `name` field is written to MongoDB outside of schema validation, while the declared `username` field is never populated. This means the schema and the route handlers are inconsistent in the current source. Be aware of this discrepancy if you extend the authentication logic or add schema-level validation.
+</Warning>
 
 <Warning>
   **Passwords are stored in plaintext.** The default implementation writes the `password` field to MongoDB exactly as submitted by the user — no hashing or salting is applied. This is not suitable for any production or publicly accessible deployment. Before going live, integrate a password hashing library such as [bcrypt](https://www.npmjs.com/package/bcrypt) and store only the resulting hash in the database.
 </Warning>
 
-### Using MongoDB Atlas
+### Authentication Routes
 
-To connect to a hosted [MongoDB Atlas](https://www.mongodb.com/atlas) cluster instead of a local instance, replace the connection string in `src/mongo.js` with your Atlas URI:
+The two active POST routes in `src/index.js` handle account creation and login:
+
+**`POST /signup`** — reads `req.body.name` and `req.body.password`, saves `{ name, password }` via `LogInCollection.insertMany()`, and renders the `landing` view on success. If a document with the same `name` and `password` already exists, it responds with `"User details already exist"`. On any error, it redirects to `/`.
+
+**`POST /login`** — queries `LogInCollection.findOne({ name: req.body.name })` and compares `check.password` against `req.body.password`. On a match it renders `landing` with the naming template variable; on a mismatch it responds `"incorrect password"`; on a thrown error (e.g. user not found) it responds `"wrong details"`.
 
 ```js
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/LoginFormPractice")
-```
+// src/index.js — POST /signup
+app.post("/signup", async (req, res) => {
+  const data = {
+    name: req.body.name,
+    password: req.body.password,
+  };
 
-Then set the variable in your `.env` file:
+  try {
+    const checking = await LogInCollection.findOne({ name: req.body.name });
 
-```env
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/LoginFormPractice?retryWrites=true&w=majority
+    if (
+      checking &&
+      checking.name === req.body.name &&
+      checking.password === req.body.password
+    ) {
+      res.send("User details already exist");
+    } else {
+      await LogInCollection.insertMany([data]);
+      res.status(201).render("landing", { naming: req.body.name });
+    }
+  } catch (error) {
+    res.redirect("/");
+  }
+});
+
+// src/index.js — POST /login
+app.post("/login", async (req, res) => {
+  try {
+    const check = await LogInCollection.findOne({ name: req.body.name });
+
+    if (check.password === req.body.password) {
+      res
+        .status(201)
+        .render("landing", { naming: `${req.body.password}+${req.body.name}` });
+    } else {
+      res.send("incorrect password");
+    }
+  } catch (e) {
+    res.send("wrong details");
+  }
+});
 ```
 
 ---
@@ -103,13 +150,17 @@ const paypal = require('paypal-rest-sdk');
 const { PAYPAL_MODE, PAYPAL_CLIENT_KEY, PAYPAL_SECRET_KEY } = process.env;
 
 paypal.configure({
-  'mode': PAYPAL_MODE,         // 'sandbox' or 'live'
+  'mode': PAYPAL_MODE,           // 'sandbox' or 'live'
   'client_id': PAYPAL_CLIENT_KEY,
   'client_secret': PAYPAL_SECRET_KEY
 });
 ```
 
 `paypal.configure()` is called once when the module is first loaded, so the credentials are set for the lifetime of the process. To switch between sandbox and live without redeploying, update `PAYPAL_MODE` and the corresponding credential variables in `.env` and restart the server.
+
+<Note>
+  The payment controller (`src/controllers/paymentController.js`) defines the PayPal logic, but the route that mounts it (`/paymentGateway`) is commented out in `src/index.js`. The GET routes for `/paymentGateway`, `/success`, and `/cancel` render their respective views, but the controller's `payProduct` and `successPage` functions are not actively wired to routes in the current source.
+</Note>
 
 ### Sandbox vs. Live Mode
 
@@ -118,7 +169,7 @@ paypal.configure({
 | `sandbox` | Local development, QA, and testing with simulated PayPal accounts | [PayPal Developer Sandbox](https://developer.paypal.com/tools/sandbox/) |
 | `live` | Real donations from real PayPal accounts | [PayPal Live App Credentials](https://developer.paypal.com/dashboard/) |
 
-The payment flow creates a `sale` intent through `paypal.payment.create()`, redirects the user to PayPal for approval, and then executes the payment via `paypal.payment.execute()` on the return callback at `GET /success`. A cancelled transaction routes to `GET /cancel`.
+The payment flow creates a `sale` intent through `paypal.payment.create()`, redirects the user to PayPal for approval, and then executes the payment via `paypal.payment.execute()` on the return callback. A cancelled transaction routes to `GET /cancel`.
 
 ---
 

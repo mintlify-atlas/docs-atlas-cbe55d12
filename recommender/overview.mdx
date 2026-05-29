@@ -64,7 +64,7 @@ The recommender uses a straightforward three-step process: load a structured dat
 
 ## Interest Categories
 
-The recommender's matching logic is built on twelve binary skill/interest columns defined in `people/database.csv`.
+The recommender's matching logic is built on eleven binary skill/interest columns defined in `tempelates/people_recommender_dataset.csv`.
 
 | Column | Type | Description |
 |---|---|---|
@@ -80,7 +80,6 @@ The recommender's matching logic is built on twelve binary skill/interest column
 | `AI` | 0 / 1 | Artificial intelligence |
 | `Natural Language Processing` | 0 / 1 | NLP techniques |
 | `Deep Learning` | 0 / 1 | Deep learning and neural networks |
-| `Mysql` | 0 / 1 | MySQL databases |
 
 Each column is a binary flag — there are no weighted or scaled values. Cosine similarity therefore measures how many interests two people share relative to the total number of interests each person holds.
 
@@ -147,7 +146,7 @@ The recommender runs as a separate process from the main Node.js application. Yo
   <Step title="Start the main Node.js app (separate terminal)">
     ```bash
     # From the project root
-    node app.js
+    node src/index.js
     ```
 
     The Node.js server runs on `http://localhost:3000`. Both servers must be running simultaneously for the full recommender UI to work.

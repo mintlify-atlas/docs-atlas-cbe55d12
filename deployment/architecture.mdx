@@ -33,29 +33,34 @@ GradGather/
 │   │   └── paymentController.js  # PayPal payment logic
 │   └── routes/
 │       └── paymentRoute.js   # Payment sub-router
-├── tempelates/               # Handlebars (.hbs) view templates
+├── tempelates/               # Handlebars (.hbs) view templates + recommender
 │   ├── home.hbs
 │   ├── landing.hbs           # Alumni dashboard
 │   ├── studash.hbs           # Student dashboard
 │   ├── directory.hbs
+│   ├── directory.js
 │   ├── events.hbs
 │   ├── clubs.hbs
 │   ├── techno.hbs
 │   ├── connect.hbs
 │   ├── donation.hbs
 │   ├── paymentGateway.hbs
+│   ├── success.hbs
+│   ├── cancel.hbs
 │   ├── signup.hbs
 │   ├── login.hbs
 │   ├── 2signup.hbs
 │   ├── userprofile.hbs
 │   ├── stuprofile.hbs
-│   ├── recom.html
-│   └── recom.py              # Flask recommender (can be moved)
+│   ├── recom.html            # Recommender UI
+│   ├── recom.js              # Recommender frontend logic
+│   ├── recom.py              # Flask recommender microservice
+│   └── people_recommender_dataset.csv  # Interest dataset for recommender
 ├── public/
 │   ├── css/                  # Stylesheets per page
 │   └── images/               # Static assets (logos, events, clubs, avatars)
 └── people/
-    └── database.csv          # Alumni interest dataset for recommender
+    └── database.csv          # Alternative alumni interest dataset (19 profiles, includes Mysql column)
 ```
 
 <Note>
