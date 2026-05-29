@@ -1,0 +1,158 @@
+---
+title: "Events: Browse and Manage Alumni Events"
+sidebarTitle: "Events"
+description: "GradGather's events page displays alumni events as visual cards with filtering tabs for All Events, Upcoming Events, and Attended Events."
+---
+
+The Events page gives GradGather users a central place to browse alumni gatherings, workshops, and community activities. Events are displayed as Bootstrap cards — each with a cover image, a title, a short description, and a "Go to Dashboard" action button. The page also exposes a JavaScript API for dynamically appending new event cards at runtime, making it straightforward to extend the listing without modifying the server-rendered HTML.
+
+## Accessing Events
+
+The events page is served from a single Express route that renders the `events.hbs` template:
+
+| Method | Path     | Description                          |
+|--------|----------|--------------------------------------|
+| GET    | /events  | Events listing with navigation tabs  |
+
+```js
+// src/index.js
+app.get("/events", (req, res) => {
+  res.render("events");
+});
+```
+
+## Event Navigation Tabs
+
+The events page uses a Bootstrap 4 navbar as a tab bar across the top of the page. The tabs let users filter the event list by category:
+
+| Tab              | Status   | Description                                     |
+|------------------|----------|-------------------------------------------------|
+| All Events       | Active   | Shows all available events (default view)       |
+| Upcoming Events  | Enabled  | Filter for events that have not yet occurred    |
+| Attended Events  | Enabled  | Filter for events the user has already attended |
+| Host an Event    | Disabled | Placeholder — event hosting not yet implemented |
+
+A Bootstrap search bar is also embedded in the navbar row, allowing users to search for events by keyword.
+
+```hbs
+<!-- tempelates/events.hbs — navigation tabs -->
+<nav class="navbar navbar-expand-lg bg-body-tertiary navbar-item">
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link active" href="#">All Events</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Upcoming Events</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Attended Events</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link disabled" aria-disabled="true">Host an Event</a>
+    </li>
+  </ul>
+</nav>
+```
+
+## Event Cards
+
+The `.event-panel` container holds one Bootstrap card per event. Five events are rendered server-side in `events.hbs`, each referencing a static image from the `public/images/events/` directory:
+
+| Event   | Image File                        |
+|---------|-----------------------------------|
+| Event 1 | `public/images/events/event1.jpeg` |
+| Event 2 | `public/images/events/event2.jpeg` |
+| Event 3 | `public/images/events/event3.jpeg` |
+| Event 4 | `public/images/events/event4.jpeg` |
+| Event 5 | `public/images/events/event5.jpeg` |
+
+Each card follows this Bootstrap structure:
+
+```hbs
+<!-- tempelates/events.hbs — static event card -->
+<div class="card event-element">
+  <img src="images/events/event1.jpeg" class="card-img-top" alt="...">
+  <div class="card-body">
+    <h5 class="card-title">Event 1</h5>
+    <p class="card-text">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+    <a href="#" class="btn btn-primary">Go to Dashboard</a>
+  </div>
+</div>
+```
+
+## Adding Events Dynamically
+
+The `addEventCard(event)` JavaScript function lets you inject additional event cards into the `.event-panel` at runtime — for example, after fetching new events from an API. The function accepts a plain event object and builds the full Bootstrap card structure programmatically:
+
+```js
+// tempelates/events.hbs — dynamic card builder
+function addEventCard(event) {
+  // Create the card element
+  const card = document.createElement('div');
+  card.className = 'card event-element';
+
+  // Create the image element
+  const img = document.createElement('img');
+  img.src = event.imageUrl;
+  img.className = 'card-img-top';
+  img.alt = event.title;
+  card.appendChild(img);
+
+  // Create the card body
+  const cardBody = document.createElement('div');
+  cardBody.className = 'card-body';
+
+  // Create the card title
+  const cardTitle = document.createElement('h5');
+  cardTitle.className = 'card-title';
+  cardTitle.textContent = event.title;
+  cardBody.appendChild(cardTitle);
+
+  // Create the card text
+  const cardText = document.createElement('p');
+  cardText.className = 'card-text';
+  cardText.textContent = event.description;
+  cardBody.appendChild(cardText);
+
+  // Create the button
+  const cardButton = document.createElement('a');
+  cardButton.className = 'btn btn-primary';
+  cardButton.href = event.link;
+  cardButton.textContent = 'Go to Dashboard';
+  cardBody.appendChild(cardButton);
+
+  card.appendChild(cardBody);
+  document.querySelector('.event-panel').appendChild(card);
+}
+```
+
+### Event Object Fields
+
+<ParamField body="imageUrl" type="string" required>
+  URL or relative path to the event's cover image. Example: `./images/event6.jpeg`.
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Display title for the event card. Example: `"Event 6"`.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Short description of the event shown in the card body.
+</ParamField>
+
+<ParamField body="link" type="string" required>
+  The `href` value for the "Go to Dashboard" button. Use `"#"` for a placeholder or supply a full path.
+</ParamField>
+
+Example usage:
+
+```js
+const exampleEvent = {
+  imageUrl: './images/event6.jpeg',
+  title: 'Event 6',
+  description: 'This is a description for Event 6.',
+  link: '#'
+};
+
+addEventCard(exampleEvent);
+```

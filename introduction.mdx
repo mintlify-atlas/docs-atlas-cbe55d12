@@ -1,0 +1,61 @@
+---
+title: "GradGather: Alumni-Student Networking Platform"
+sidebarTitle: "Introduction"
+description: "GradGather (BridgeU) is a full-stack platform connecting students and alumni through mentorship, events, clubs, and donations — built on Node.js and MongoDB."
+---
+
+GradGather — branded as **BridgeU** in the user interface — is a full-stack web platform that bridges the gap between current students and university alumni. Students gain access to mentorship, career guidance, and peer networks, while alumni can reconnect with their institution, contribute expertise, support clubs, and give back through donations. The platform brings together every dimension of alumni-student engagement in one cohesive experience: browsing a live alumni directory, signing up for events, joining interest-based clubs, and initiating direct connections — all without leaving the app.
+
+<Note>
+  **BridgeU** is the brand name displayed throughout the UI (page titles, the navigation logo, and marketing copy). The underlying project repository and codebase are named **GradGather**. Both names refer to the same platform.
+</Note>
+
+## User Roles
+
+GradGather supports two distinct user types, each with their own onboarding path accessible from the `/2signup` role-selection page:
+
+- **Students** — Current university students who log in to browse the alumni directory, join clubs and events, and request mentorship or advice from alumni.
+- **Alumni** — Former students who reconnect with the university community to mentor students, participate in events, share expertise, and make financial contributions through the donation gateway.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/features/authentication">
+    Separate sign-up and login flows for students and alumni, backed by MongoDB credential storage via Mongoose.
+  </Card>
+  <Card title="Alumni Directory" icon="address-book" href="/features/alumni-directory">
+    A searchable directory of alumni profiles so students can discover potential mentors and professional contacts.
+  </Card>
+  <Card title="Events" icon="calendar" href="/features/events">
+    Browse and register for university-run and alumni-led events directly through the platform.
+  </Card>
+  <Card title="Clubs" icon="users" href="/features/clubs">
+    Explore and join interest-based clubs, fostering community among both students and alumni.
+  </Card>
+  <Card title="Connect" icon="handshake" href="/features/connect">
+    A dedicated connection hub where students can reach out to alumni for mentorship, collaboration, or advice.
+  </Card>
+  <Card title="Donations" icon="heart" href="/features/donations">
+    Alumni can contribute financially to the institution through a PayPal-powered donation gateway with sandbox and live modes.
+  </Card>
+  <Card title="People Recommender" icon="wand-magic-sparkles" href="/recommender/overview">
+    A Flask microservice that analyses user profiles and suggests relevant alumni or students to connect with.
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+GradGather is built entirely with open-source, widely-adopted technologies:
+
+| Layer | Technology |
+|---|---|
+| **Runtime** | Node.js 18+ |
+| **Web Framework** | Express 4 |
+| **Templating** | Handlebars (HBS) — server-side rendering |
+| **Database** | MongoDB, accessed via Mongoose ODM |
+| **Payment Gateway** | PayPal REST SDK (`paypal-rest-sdk`) |
+| **Recommendation Engine** | Flask microservice (Python) |
+| **Configuration** | dotenv |
+| **Development** | nodemon for auto-reload |
+
+The Express server (`src/index.js`) handles all routing and renders `.hbs` templates from the `tempelates/` directory. Static assets — CSS stylesheets and images — are served from the `public/` directory. MongoDB connectivity and schema definitions live in `src/mongo.js`, and PayPal payment orchestration is handled by `src/controllers/paymentController.js`.

@@ -1,0 +1,143 @@
+---
+title: "Configure GradGather: Environment and Database Setup"
+sidebarTitle: "Configuration"
+description: "Set up environment variables, connect GradGather to MongoDB, and configure PayPal credentials for the donation payment gateway."
+---
+
+GradGather centralises all runtime configuration through environment variables loaded by the [`dotenv`](https://github.com/motdotla/dotenv) package. When the Express server starts, `src/index.js` calls `require("dotenv").config()` before any routes are registered, making every variable defined in a root-level `.env` file available on `process.env` throughout the application. This means no credentials or environment-specific values need to be hard-coded in source files — you control the behaviour of each deployment entirely through that single file.
+
+---
+
+## Environment Variables
+
+The table below documents every environment variable GradGather reads at runtime. Create a `.env` file in the project root and populate the variables relevant to your deployment.
+
+<ParamField body="PORT" type="number">
+  The TCP port the Express HTTP server binds to. Defaults to `3000` if not set — equivalent to the fallback `process.env.PORT || 3000` in `src/index.js`. Change this if port 3000 is already occupied on your machine or host.
+</ParamField>
+
+<ParamField body="PAYPAL_MODE" type="string" required>
+  Controls which PayPal environment the REST SDK targets. Accepted values are `sandbox` (for development and testing with simulated transactions) and `live` (for real monetary transactions in production). This variable is required whenever the donation feature is used — omitting it will cause PayPal API calls to fail.
+</ParamField>
+
+<ParamField body="PAYPAL_CLIENT_KEY" type="string" required>
+  The **Client ID** of your PayPal REST application. Obtain this from the [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/) under **My Apps & Credentials**. Use the sandbox Client ID when `PAYPAL_MODE=sandbox`, and the live Client ID when `PAYPAL_MODE=live`.
+</ParamField>
+
+<ParamField body="PAYPAL_SECRET_KEY" type="string" required>
+  The **Secret Key** (client secret) of your PayPal REST application. Keep this value confidential — never commit it to version control. Rotate it from the PayPal Developer Dashboard if it is ever exposed.
+</ParamField>
+
+---
+
+## MongoDB Connection
+
+GradGather connects to MongoDB using [Mongoose](https://mongoosejs.com/), a schema-based ODM for Node.js. The connection is established in `src/mongo.js`, which is `require`-d by `src/index.js` at startup. The connection string is currently hard-coded in that file and targets a local MongoDB instance:
+
+```js
+// src/mongo.js
+const mongoose = require("mongoose")
+
+mongoose.connect("mongodb://localhost:27017/LoginFormPractice")
+  .then(() => {
+    console.log('mongoose connected');
+  })
+  .catch((e) => {
+    console.log('failed');
+  })
+```
+
+The database name is `LoginFormPractice`. If MongoDB is running locally with default settings, no additional configuration is needed.
+
+### LogInCollection Schema
+
+`src/mongo.js` defines a single Mongoose model, `LogInCollection`, used to persist user credentials:
+
+```js
+const logInSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true
+  },
+  password: {
+    type: String,
+    required: true
+  }
+})
+
+const LogInCollection = new mongoose.model('LogInCollection', logInSchema)
+
+module.exports = LogInCollection
+```
+
+Both `username` and `password` are required `String` fields. The exported `LogInCollection` model is imported directly into `src/index.js` and used in the `POST /signup` and `POST /login` route handlers to create and verify user accounts.
+
+<Warning>
+  **Passwords are stored in plaintext.** The default implementation writes the `password` field to MongoDB exactly as submitted by the user — no hashing or salting is applied. This is not suitable for any production or publicly accessible deployment. Before going live, integrate a password hashing library such as [bcrypt](https://www.npmjs.com/package/bcrypt) and store only the resulting hash in the database.
+</Warning>
+
+### Using MongoDB Atlas
+
+To connect to a hosted [MongoDB Atlas](https://www.mongodb.com/atlas) cluster instead of a local instance, replace the connection string in `src/mongo.js` with your Atlas URI:
+
+```js
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/LoginFormPractice")
+```
+
+Then set the variable in your `.env` file:
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/LoginFormPractice?retryWrites=true&w=majority
+```
+
+---
+
+## PayPal Integration
+
+Donation payments flow through the [PayPal REST SDK](https://www.npmjs.com/package/paypal-rest-sdk). The SDK is configured in `src/controllers/paymentController.js` by reading the three PayPal environment variables described above:
+
+```js
+// src/controllers/paymentController.js
+const paypal = require('paypal-rest-sdk');
+
+const { PAYPAL_MODE, PAYPAL_CLIENT_KEY, PAYPAL_SECRET_KEY } = process.env;
+
+paypal.configure({
+  'mode': PAYPAL_MODE,         // 'sandbox' or 'live'
+  'client_id': PAYPAL_CLIENT_KEY,
+  'client_secret': PAYPAL_SECRET_KEY
+});
+```
+
+`paypal.configure()` is called once when the module is first loaded, so the credentials are set for the lifetime of the process. To switch between sandbox and live without redeploying, update `PAYPAL_MODE` and the corresponding credential variables in `.env` and restart the server.
+
+### Sandbox vs. Live Mode
+
+| Mode | When to use | Credential source |
+|---|---|---|
+| `sandbox` | Local development, QA, and testing with simulated PayPal accounts | [PayPal Developer Sandbox](https://developer.paypal.com/tools/sandbox/) |
+| `live` | Real donations from real PayPal accounts | [PayPal Live App Credentials](https://developer.paypal.com/dashboard/) |
+
+The payment flow creates a `sale` intent through `paypal.payment.create()`, redirects the user to PayPal for approval, and then executes the payment via `paypal.payment.execute()` on the return callback at `GET /success`. A cancelled transaction routes to `GET /cancel`.
+
+---
+
+## Template Engine
+
+GradGather uses [HBS](https://www.npmjs.com/package/hbs) — a lightweight Express integration for Handlebars — as its server-side rendering engine. The view engine is configured in `src/index.js`:
+
+```js
+// src/index.js
+const tempelatePath = path.join(__dirname, "../tempelates");
+const publicPath = path.join(__dirname, "../public");
+
+app.set("view engine", "hbs");
+app.set("views", tempelatePath);
+app.use(express.static(publicPath));
+```
+
+Key points about the template configuration:
+
+- **Views directory** — `tempelates/` (note: the directory name contains a deliberate typo — `tempelates` rather than `templates` — which matches the source repository exactly and must be preserved for the app to find its views).
+- **Static assets** — CSS stylesheets and images are served from `public/`. Templates reference these assets with paths such as `css/home.css` and `images/Assets/BridgeULogo.png`, which Express resolves relative to the `public/` root.
+- **Rendering** — Each route calls `res.render("<view-name>")`, where `<view-name>` maps to a `.hbs` file in the `tempelates/` directory (e.g., `res.render("home")` renders `tempelates/home.hbs`).

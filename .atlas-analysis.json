@@ -1,0 +1,88 @@
+{
+  "projectType": "saas",
+  "projectName": "GradGather (BridgeU)",
+  "projectDescription": "GradGather (branded as BridgeU) is a full-stack alumni networking platform that connects students and alumni for mentorship, networking, events, club participation, and donations, built with Node.js, Express, Handlebars, and MongoDB.",
+  "theme": "almond",
+  "primaryColor": "#a781f5",
+  "lightColor": "#ede8ff",
+  "darkColor": "#6b45c9",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "configuration"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/authentication",
+              "features/dashboard",
+              "features/alumni-directory",
+              "features/events",
+              "features/clubs",
+              "features/connect",
+              "features/donations"
+            ]
+          },
+          {
+            "group": "People Recommender",
+            "pages": [
+              "recommender/overview",
+              "recommender/api-reference"
+            ]
+          },
+          {
+            "group": "Deployment & Architecture",
+            "pages": [
+              "deployment/architecture",
+              "deployment/environment-variables",
+              "deployment/running-locally"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Student and alumni registration with separate login flows",
+    "Alumni directory with search and filtering by name, year, degree, and field",
+    "Events browsing and management with dynamic card rendering",
+    "University clubs showcase (TechnoX, Bizeco, NSS Club, Niyantran)",
+    "Connect page for discovering and networking with alumni",
+    "Donation portal with PayPal integration for clubs and scholarships",
+    "Interest-based people recommender using cosine similarity (Flask microservice)",
+    "User and student profiles with graduation year, course, and activity tracking",
+    "Server-side rendering with Handlebars (HBS) templates",
+    "MongoDB/Mongoose backend for user credential storage"
+  ],
+  "publicApiSurface": [
+    "GET / — Home landing page",
+    "GET /2signup — Role selection (student vs alumni) login/signup page",
+    "GET /signup — Signup form",
+    "POST /signup — Create new user account",
+    "GET /login — Login form",
+    "POST /login — Authenticate user",
+    "GET /landing — Authenticated user dashboard (alumni)",
+    "GET /studash — Student dashboard",
+    "GET /directory — Alumni directory with search",
+    "GET /events — Events listing page",
+    "GET /clubs — University clubs listing",
+    "GET /techno — TechnoX club detail page",
+    "GET /connect — Connect with alumni page",
+    "GET /userprofile — Alumni user profile",
+    "GET /stuprofile — Student profile",
+    "GET /donation — Donation campaigns listing",
+    "GET /paymentGateway — PayPal payment gateway",
+    "POST /pay — Initiate PayPal payment",
+    "GET /success — Payment success page",
+    "GET /cancel — Payment cancel page",
+    "GET /recom?person_name=<name>&n=<count> — People recommendation API (Flask microservice)"
+  ]
+}

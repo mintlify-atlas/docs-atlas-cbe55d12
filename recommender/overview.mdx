@@ -1,0 +1,260 @@
+---
+title: "People Recommender: Interest-Based Connection Engine"
+sidebarTitle: "Overview"
+description: "GradGather's people recommender is a Flask microservice that uses cosine similarity on binary interest vectors to suggest the most compatible alumni and student connections."
+---
+
+GradGather's people recommender is a standalone Flask microservice that runs alongside the main Node.js application. It analyses shared interests across alumni and student profiles and returns ranked connection suggestions based on cosine similarity scores. While the main app handles authentication, profiles, and messaging on port 3000, this Python microservice runs independently on port 5000, exposing a single REST endpoint that the frontend queries directly via JavaScript.
+
+---
+
+## How It Works
+
+The recommender uses a straightforward three-step process: load a structured dataset, compute pairwise similarity across all profiles, then serve ranked suggestions on demand.
+
+<Steps>
+  <Step title="Load the Interest Dataset">
+    At startup, the microservice reads a CSV file where each row represents a person and each column after the first is a binary interest flag — `1` means the person has that interest or skill, `0` means they do not. This matrix is loaded once into a pandas DataFrame and held in memory.
+
+    ```python
+    df = pd.read_csv('people_recommender_dataset.csv')
+    interest_columns = df.columns[1:]
+    interests = df[interest_columns]
+    ```
+  </Step>
+
+  <Step title="Compute the Cosine Similarity Matrix">
+    `sklearn.metrics.pairwise.cosine_similarity` computes a pairwise similarity score between every combination of person-vectors. The result is wrapped in a pandas DataFrame indexed by person name so that lookups are O(1) label-based slices.
+
+    ```python
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    similarity_matrix = cosine_similarity(interests)
+    similarity_df = pd.DataFrame(
+        similarity_matrix,
+        index=df['Person'],
+        columns=df['Person']
+    )
+    ```
+
+    Two people with identical interest profiles produce a score of `1.0`; people with no overlapping interests produce `0.0`. All other profiles fall somewhere in between.
+  </Step>
+
+  <Step title="Return Top-N Recommendations">
+    When a request arrives, the microservice looks up the target person's similarity column, drops their own entry (a person is always perfectly similar to themselves), sorts the remaining rows in descending order, and returns the top N results as a JSON object.
+
+    ```python
+    def recommend_similar_people(person_name, n=5):
+        if person_name not in similarity_df.index:
+            return {"error": f"Person '{person_name}' not found in the dataset."}
+
+        similar_people = (
+            similarity_df[person_name]
+            .sort_values(ascending=False)
+            .drop(person_name)
+            .head(n)
+            .to_dict()
+        )
+        return similar_people
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Interest Categories
+
+The recommender's matching logic is built on twelve binary skill/interest columns defined in `people/database.csv`.
+
+| Column | Type | Description |
+|---|---|---|
+| `Person` | string | Full name of the alumni or student |
+| `Machine Learning` | 0 / 1 | Interest in ML concepts and frameworks |
+| `Data Science` | 0 / 1 | Data analysis, statistics, and visualisation |
+| `Python` | 0 / 1 | Python programming |
+| `Web Development` | 0 / 1 | General full-stack or backend web work |
+| `JavaScript` | 0 / 1 | JavaScript (front or back end) |
+| `React` | 0 / 1 | React.js library |
+| `HTML` | 0 / 1 | HTML mark-up |
+| `CSS` | 0 / 1 | CSS styling |
+| `AI` | 0 / 1 | Artificial intelligence |
+| `Natural Language Processing` | 0 / 1 | NLP techniques |
+| `Deep Learning` | 0 / 1 | Deep learning and neural networks |
+| `Mysql` | 0 / 1 | MySQL databases |
+
+Each column is a binary flag — there are no weighted or scaled values. Cosine similarity therefore measures how many interests two people share relative to the total number of interests each person holds.
+
+---
+
+## Dataset
+
+The primary dataset used by the microservice in `tempelates/recom.py` is `people_recommender_dataset.csv`. The alternative version in `people/shreyas/recom.py` points to `people/database.csv`, which holds 19 real GradGather team member profiles and includes the extra `Mysql` column.
+
+Below is an excerpt of `people/database.csv`:
+
+```csv
+Person,Machine Learning,Data Science,Python,Web Development,JavaScript,React,HTML,CSS,AI,Natural Language Processing,Deep Learning,Mysql
+Anay Singh,0,0,0,1,1,0,1,1,0,0,0,0
+Vishal Chauhan,0,0,0,1,1,1,1,1,0,0,0,0
+Sandhya Yadav,1,0,1,1,1,1,1,1,1,0,0,0
+Tushar Mukherjee,0,1,0,1,1,1,1,1,0,0,0,0
+Vishal Kumar,0,1,0,1,1,1,1,1,0,0,0,0
+Tanishq Gupta,0,1,0,1,1,1,1,1,0,0,0,1
+```
+
+<Info>
+  The `people_recommender_dataset.csv` file in `tempelates/` uses 11 interest columns (no `Mysql`) and contains a larger set of synthetic profiles. Both datasets share the same schema pattern — `Person` name first, then binary interest flags — so the same microservice code works with either file by changing only the `pd.read_csv(...)` path.
+</Info>
+
+---
+
+## Running the Microservice
+
+The recommender runs as a separate process from the main Node.js application. You will need two terminal sessions open during development.
+
+<Steps>
+  <Step title="Navigate to the microservice directory">
+    Use the `tempelates/` directory for the synthetic dataset, or `people/shreyas/` for the version backed by real team member data.
+
+    ```bash
+    # Option A — synthetic dataset
+    cd tempelates
+
+    # Option B — real alumni dataset (people/database.csv)
+    cd people/shreyas
+    ```
+  </Step>
+
+  <Step title="Install Python dependencies">
+    ```bash
+    pip install flask pandas scikit-learn flask-cors
+    ```
+  </Step>
+
+  <Step title="Start the Flask server">
+    ```bash
+    python recom.py
+    ```
+
+    Flask starts in debug mode on `http://localhost:5000`. You should see output similar to:
+
+    ```
+     * Running on http://127.0.0.1:5000
+     * Debug mode: on
+    ```
+  </Step>
+
+  <Step title="Start the main Node.js app (separate terminal)">
+    ```bash
+    # From the project root
+    node app.js
+    ```
+
+    The Node.js server runs on `http://localhost:3000`. Both servers must be running simultaneously for the full recommender UI to work.
+  </Step>
+</Steps>
+
+<Note>
+  CORS is enabled on the Flask server via `flask_cors.CORS(app)`. This is required because the browser frontend is served from `localhost:3000` and makes cross-origin requests to `localhost:5000`. Without it, browsers would block the fetch call under the Same-Origin Policy.
+</Note>
+
+---
+
+## Full Microservice Source
+
+Below is the complete source of `tempelates/recom.py` exactly as it appears in the repository.
+
+```python
+from flask import Flask, jsonify, request
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+from flask_cors import CORS
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)
+
+# Load the dataset
+df = pd.read_csv('people_recommender_dataset.csv')
+
+# Extracting interest features (excluding 'Person' column)
+interest_columns = df.columns[1:]
+interests = df[interest_columns]
+
+# Compute the cosine similarity between people based on their interests
+similarity_matrix = cosine_similarity(interests)
+similarity_df = pd.DataFrame(similarity_matrix, index=df['Person'], columns=df['Person'])
+
+# Function to get top N recommendations for a person
+def recommend_similar_people(person_name, n=5):
+    if person_name not in similarity_df.index:
+        return {"error": f"Person '{person_name}' not found in the dataset."}
+    
+    # Sort the similarity scores in descending order, excluding the person themself
+    similar_people = similarity_df[person_name].sort_values(ascending=False).drop(person_name).head(n).to_dict()
+    
+    return similar_people
+
+# API route to get recommendations
+@app.route('/recom', methods=['GET'])
+def get_recommendations():
+    person_name = request.args.get('person_name')
+    n = int(request.args.get('n', 5))  # Default to 5 recommendations
+    if not person_name:
+        return jsonify({"error": "Please provide a person_name"}), 400
+    
+    recommendations = recommend_similar_people(person_name, n)
+    return jsonify(recommendations)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+```
+
+<Warning>
+  The similarity matrix is computed once at server start and cached in memory. Adding or editing rows in the CSV file requires a server restart before the changes take effect.
+</Warning>
+
+---
+
+## Frontend Integration
+
+The recommender ships with a dedicated frontend page at `tempelates/recom.html` — a minimal form that accepts a person name, calls the Flask API, and renders ranked results in the browser.
+
+`tempelates/recom.js` drives all interactivity. When the user clicks **Get Recommendations**, it reads the name input, calls `http://localhost:5000/recom` with CORS mode enabled, and iterates over the returned JSON object to render each match with its similarity score:
+
+```js
+document.getElementById('getRecommendations').addEventListener('click', function() {
+    const personName = document.getElementById('personName').value;
+
+    if (!personName) {
+        alert('Please enter a name');
+        return;
+    }
+
+    fetch(`http://localhost:5000/recom?person_name=${encodeURIComponent(personName)}`, {
+        mode: 'cors'
+    })
+        .then(response => response.json())
+        .then(data => {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (data.error) {
+                resultsDiv.innerHTML = `<p>${data.error}</p>`;
+            } else {
+                for (const [person, score] of Object.entries(data)) {
+                    const resultItem = document.createElement('div');
+                    resultItem.classList.add('result-item');
+                    resultItem.textContent = `${person} - Similarity Score: ${score.toFixed(2)}`;
+                    resultsDiv.appendChild(resultItem);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching recommendations:', error);
+            alert('An error occurred while fetching recommendations. Please try again.');
+        });
+});
+```
+
+The `n` parameter is not exposed in the default HTML form — the frontend always fetches the default 5 recommendations. You can add an `n` field to the form or pass it programmatically when integrating the endpoint elsewhere in the app.

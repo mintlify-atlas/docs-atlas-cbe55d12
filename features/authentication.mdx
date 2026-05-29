@@ -1,0 +1,175 @@
+---
+title: "Authentication: Student and Alumni Login Flows"
+sidebarTitle: "Authentication"
+description: "GradGather supports two user roles — students and alumni. Learn how signup, login, and session handling work in the Express + MongoDB backend."
+---
+
+GradGather uses a unified authentication system built on Express and MongoDB/Mongoose. Both students and alumni share the same signup and login forms, but are directed to role-specific dashboards after account creation. The backend validates credentials against a MongoDB collection and renders the appropriate view on success, passing the user's name as a Handlebars template variable.
+
+## User Roles
+
+GradGather recognises two distinct user roles on the platform:
+
+- **Alumni** — Graduates who can browse the alumni directory, post job openings, connect with peers, donate to clubs and scholarships, and manage their alumni profile at `/userprofile`.
+- **Students** — Current students who can connect with alumni for mentorship, explore job opportunities, donate to causes, and manage their student profile at `/stuprofile`.
+
+Both roles authenticate through the same `/signup` and `/login` routes. After a successful signup, the user is directed to the alumni dashboard (`/landing`) with their name passed as a Handlebars variable. Student-specific routing is handled in the extended registration flow (see the commented `studentRegister` handlers in `src/index.js`).
+
+## Role Selection
+
+Before signing up or logging in, users land on the `/2signup` route which renders the `2signup.hbs` role selection page. The page displays two side-by-side cards — one for students and one for alumni — each containing a short description and buttons linking to `/login` and `/signup`.
+
+```hbs
+<!-- tempelates/2signup.hbs — role selection cards -->
+<div class="for-students">
+  <h3>For students</h3>
+  <p>We help companies connect with alumni for recruitment, networking,
+    and mentorship.</p>
+  <button class="orange-btn"><a class="white" href="/login">Login</a></button>
+  <p>Don't have an account? <a href="/signup">Sign up</a></p>
+</div>
+
+<div class="for-alumni">
+  <h3>For Alumni</h3>
+  <p>Join alumni from all over the world. Connect, collaborate, and network.</p>
+  <button class="orange-btn"><a class="white" href="/login">Login</a></button>
+  <p>Don't have an account? <a href="/signup">Sign up</a></p>
+</div>
+```
+
+## Signup Flow
+
+The signup form at `/signup` renders `signup.hbs` and collects two fields — **name** and **password** — submitted via `POST /signup`.
+
+```hbs
+<!-- tempelates/signup.hbs -->
+<form action="/signup" method="post">
+  <h1>Sign Up</h1>
+  <input placeholder="Name" name="name" type="text">
+  <br>
+  <input placeholder="Password" name="password" type="password">
+  <br>
+  <input class="sub" type="submit">
+  <a href="/">Go back to home page</a>
+</form>
+```
+
+The `POST /signup` handler in `src/index.js` creates a new document in the `LogInCollection` MongoDB collection using `insertMany`, then renders the alumni dashboard on success:
+
+```js
+// src/index.js — POST /signup handler
+app.post("/signup", async (req, res) => {
+  const data = {
+    name: req.body.name,
+    password: req.body.password,
+  };
+
+  try {
+    const checking = await LogInCollection.findOne({ name: req.body.name });
+
+    if (
+      checking &&
+      checking.name === req.body.name &&
+      checking.password === req.body.password
+    ) {
+      res.send("User details already exist");
+    } else {
+      await LogInCollection.insertMany([data]);
+      res.status(201).render("landing", { naming: req.body.name });
+    }
+  } catch (error) {
+    res.redirect("/"); // Redirect to home page if an error occurs
+  }
+});
+```
+
+<Warning>
+  Passwords are currently stored in **plaintext** in MongoDB. Before deploying
+  to production, replace the raw password storage with a hashing library such as
+  `bcrypt`. Hash the password before calling `insertMany` and use
+  `bcrypt.compare()` inside the login handler.
+</Warning>
+
+## Login Flow
+
+The login form at `/login` renders `login.hbs` and accepts the same **name** and **password** fields via `POST /login`.
+
+```hbs
+<!-- tempelates/login.hbs -->
+<form action="/login" method="post">
+  <h1>Login Form</h1>
+  <input placeholder="Name" name="name" type="text">
+  <br>
+  <input placeholder="Password" name="password" type="password">
+  <br>
+  <a href="/landing"><input class="sub" type="submit" value="Submit"></a>
+  <h3>Dont have a account ?</h3>
+  <a href="/signup">Create a new account</a>
+</form>
+```
+
+The `POST /login` handler looks up the user by name with `LogInCollection.findOne({ name })`, then performs a strict equality check on the stored password:
+
+```js
+// src/index.js — POST /login handler
+app.post("/login", async (req, res) => {
+  try {
+    const check = await LogInCollection.findOne({ name: req.body.name });
+
+    if (check.password === req.body.password) {
+      res
+        .status(201)
+        .render("landing", { naming: `${req.body.password}+${req.body.name}` });
+    } else {
+      res.send("incorrect password");
+    }
+  } catch (e) {
+    res.send("wrong details");
+  }
+});
+```
+
+<Note>
+  After a successful login, the user is directed to the **alumni dashboard**
+  (`/landing`). The `naming` Handlebars variable passed on login concatenates
+  the password and name strings. Student-specific dashboard routing (`/studash`)
+  is handled by the extended registration flow, not the basic login handler.
+</Note>
+
+## Mongoose Schema
+
+The `LogInCollection` model in `src/mongo.js` defines the shape of every user document. Both fields are required strings:
+
+```js
+// src/mongo.js
+const mongoose = require("mongoose");
+
+mongoose.connect("mongodb://localhost:27017/LoginFormPractice")
+  .then(() => { console.log('mongoose connected'); })
+  .catch((e) => { console.log('failed'); });
+
+const logInSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true
+  },
+  password: {
+    type: String,
+    required: true
+  }
+});
+
+const LogInCollection = new mongoose.model('LogInCollection', logInSchema);
+
+module.exports = LogInCollection;
+```
+
+## Routes Reference
+
+| Method | Path     | Description                        |
+|--------|----------|------------------------------------|
+| GET    | /2signup | Role selection page                |
+| GET    | /signup  | Signup form                        |
+| POST   | /signup  | Create user account                |
+| GET    | /login   | Login form                         |
+| POST   | /login   | Authenticate user and redirect     |

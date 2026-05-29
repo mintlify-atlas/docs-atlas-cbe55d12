@@ -1,0 +1,81 @@
+---
+title: "Environment Variables Reference for GradGather"
+sidebarTitle: "Environment Variables"
+description: "Complete reference for all environment variables used by GradGather's Express server and PayPal payment integration. Copy the .env template to get started."
+---
+
+GradGather uses the [`dotenv`](https://www.npmjs.com/package/dotenv) package to load runtime configuration from a `.env` file in the project root. The call to `require("dotenv").config()` at the top of `src/index.js` makes every key in that file available on `process.env` before any route or service is initialized. You must create this file yourself — it is intentionally excluded from version control.
+
+## Required .env Template
+
+Copy the following block into a new file named `.env` at the project root and fill in your own values before starting the server:
+
+```env
+# Server
+PORT=3000
+
+# PayPal (get credentials from https://developer.paypal.com/)
+PAYPAL_MODE=sandbox
+PAYPAL_CLIENT_KEY=your_paypal_client_id_here
+PAYPAL_SECRET_KEY=your_paypal_secret_key_here
+```
+
+<Warning>
+  **Never commit `.env` to version control.** The `PAYPAL_SECRET_KEY` grants full access to your PayPal application. Add `.env` to your `.gitignore` file immediately and rotate any credentials that may have been accidentally exposed.
+</Warning>
+
+## Variable Reference
+
+<ParamField query="PORT" type="number">
+  The port the Express HTTP server binds to. If this variable is not set, the server defaults to `3000` as defined in `src/index.js`:
+  ```js
+  const port = process.env.PORT || 3000;
+  ```
+  **Default:** `3000` — **Example:** `3000`
+</ParamField>
+
+<ParamField query="PAYPAL_MODE" type="string" required>
+  Controls which PayPal environment the `paypal-rest-sdk` targets. Set to `sandbox` while developing and testing so that no real money changes hands. Switch to `live` only when accepting real donations in production.
+
+  **Required for:** Donation / payment features — **Example:** `sandbox`
+
+  Accepted values: `sandbox` | `live`
+</ParamField>
+
+<ParamField query="PAYPAL_CLIENT_KEY" type="string" required>
+  The Client ID for your PayPal REST application. This value is read in `src/controllers/paymentController.js` and passed to `paypal.configure()` as `client_id`. It identifies your app to the PayPal API when creating and executing payments.
+
+  **Required for:** Donation / payment features — **Example:** `AaBbCcDd...`
+</ParamField>
+
+<ParamField query="PAYPAL_SECRET_KEY" type="string" required>
+  The Secret Key for your PayPal REST application. It is passed to `paypal.configure()` as `client_secret` and is used to sign API requests. This value must be kept confidential — do not log it, expose it in client-side code, or commit it to source control.
+
+  **Required for:** Donation / payment features — **Example:** `EeFfGgHh...`
+</ParamField>
+
+<Tip>
+  PayPal sandbox credentials are free. Log in to [developer.paypal.com](https://developer.paypal.com/), navigate to **My Apps & Credentials**, and create a new REST application under the **Sandbox** tab. Your Client ID and Secret will be shown immediately. Sandbox accounts also let you simulate the full buyer checkout flow without spending real money.
+</Tip>
+
+## MongoDB Connection
+
+The MongoDB connection URI is currently hardcoded directly in `src/mongo.js`:
+
+```js src/mongo.js
+// Current hardcoded connection
+mongoose.connect("mongodb://localhost:27017/LoginFormPractice")
+```
+
+This works fine for local development, but makes it harder to point the app at a different database (such as MongoDB Atlas) without editing source code. The recommended approach is to read the URI from an environment variable with a local fallback:
+
+```js src/mongo.js
+// Recommended: use environment variable
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/LoginFormPractice")
+```
+
+Once you make this change, add `MONGODB_URI` to your `.env` file when you need to override the default:
+
+```env
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.example.mongodb.net/LoginFormPractice
+```

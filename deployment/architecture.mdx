@@ -1,0 +1,112 @@
+---
+title: "GradGather System Architecture and Request Flow"
+sidebarTitle: "Architecture"
+description: "Understand how GradGather's Node.js + Express backend, Handlebars templating, MongoDB database, PayPal payment service, and Flask recommendation microservice fit together."
+---
+
+GradGather (BridgeU) is a full-stack alumni-student networking platform composed of three discrete services: a Node.js/Express web server that owns routing, authentication, and payments; a MongoDB database for persisting user credentials; and an optional Python/Flask microservice that produces interest-based people recommendations using cosine similarity. Each service runs independently and communicates over HTTP, making it straightforward to run only the pieces you need during development.
+
+## Services Overview
+
+<CardGroup cols={2}>
+  <Card title="Node.js / Express" icon="node-js">
+    The primary web server, listening on **port 3000**. It registers all application routes in `src/index.js`, renders Handlebars (`.hbs`) templates from the `tempelates/` directory, serves static assets from `public/`, handles user signup and login against MongoDB, and orchestrates the PayPal donation flow.
+  </Card>
+  <Card title="MongoDB" icon="database">
+    The application's persistence layer, running on **port 27017**. GradGather connects via Mongoose and stores user credentials in the `LogInCollection` collection inside the `LoginFormPractice` database. The schema requires a `username` and a `password` field. All other application data (alumni directory, events, clubs) is currently rendered statically.
+  </Card>
+  <Card title="Flask Recommender" icon="flask">
+    An optional Python microservice running on **port 5000**. Located in `tempelates/recom.py`, it loads a CSV dataset of alumni interest vectors, computes pairwise cosine similarity using scikit-learn, and exposes a single `GET /recom` endpoint that returns the top-N most similar people for a given name.
+  </Card>
+</CardGroup>
+
+## Directory Structure
+
+The following layout shows every meaningful file and directory in the project:
+
+```
+GradGather/
+├── src/
+│   ├── index.js              # Express entry point and routes
+│   ├── mongo.js              # Mongoose connection and LogInCollection schema
+│   ├── controllers/
+│   │   └── paymentController.js  # PayPal payment logic
+│   └── routes/
+│       └── paymentRoute.js   # Payment sub-router
+├── tempelates/               # Handlebars (.hbs) view templates
+│   ├── home.hbs
+│   ├── landing.hbs           # Alumni dashboard
+│   ├── studash.hbs           # Student dashboard
+│   ├── directory.hbs
+│   ├── events.hbs
+│   ├── clubs.hbs
+│   ├── techno.hbs
+│   ├── connect.hbs
+│   ├── donation.hbs
+│   ├── paymentGateway.hbs
+│   ├── signup.hbs
+│   ├── login.hbs
+│   ├── 2signup.hbs
+│   ├── userprofile.hbs
+│   ├── stuprofile.hbs
+│   ├── recom.html
+│   └── recom.py              # Flask recommender (can be moved)
+├── public/
+│   ├── css/                  # Stylesheets per page
+│   └── images/               # Static assets (logos, events, clubs, avatars)
+└── people/
+    └── database.csv          # Alumni interest dataset for recommender
+```
+
+<Note>
+  The templates directory is named **`tempelates`** — note the transposed letters. This is how it appears in the source code (`src/index.js` sets `views` to `../tempelates`) and must not be renamed without updating the corresponding `path.join` call in `index.js`.
+</Note>
+
+## Request Flow
+
+The following steps trace a typical page request through the full stack, using `GET /directory` as the example:
+
+<Steps>
+  <Step title="Browser issues the request">
+    The user's browser sends `GET /directory` to the Express server running at `http://localhost:3000`.
+  </Step>
+  <Step title="Express matches the route">
+    The router in `src/index.js` finds the matching handler:
+    ```js
+    app.get("/directory", (req, res) => {
+      res.render("directory");
+    });
+    ```
+    Execution passes to `res.render`, which hands control to the Handlebars engine.
+  </Step>
+  <Step title="Handlebars compiles the template">
+    The engine reads `tempelates/directory.hbs`, substitutes any template variables passed in the render call, and produces a complete HTML string.
+  </Step>
+  <Step title="HTML is sent to the browser">
+    Express writes the compiled HTML as the HTTP response body. The browser begins parsing and rendering it immediately.
+  </Step>
+  <Step title="Static assets are fetched">
+    As the browser parses the HTML, it requests linked stylesheets (e.g. `public/css/directory.css`) and images from `public/images/`. Express serves these directly from disk via `express.static(publicPath)` — no additional route handlers are needed.
+  </Step>
+  <Step title="Client-side logic runs">
+    Any search or filter functionality on the page executes in the browser using JavaScript. Alumni data used on pages like the directory is embedded statically in the rendered HTML at this stage.
+  </Step>
+</Steps>
+
+## Data Layer
+
+GradGather uses MongoDB exclusively for user authentication. The Mongoose schema defined in `src/mongo.js` creates a `LogInCollection` model with two required fields — `username` and `password` — connected to the `LoginFormPractice` database on `localhost:27017`.
+
+All other application content — alumni profiles in the directory, event listings, club details, and donation campaigns — is currently hardcoded inside Handlebars templates or embedded in client-side JavaScript. This means the Express routes for those pages call `res.render("template")` with no data argument, and the content is baked into the `.hbs` files themselves.
+
+This is an intentional simplification for the current version of GradGather and represents a clear area for future backend expansion: migrating alumni profiles, events, and clubs into MongoDB collections and fetching them dynamically at render time.
+
+## PayPal Flow
+
+GradGather uses the `paypal-rest-sdk` package to process donation payments through a redirect-based flow. The PayPal credentials (`PAYPAL_MODE`, `PAYPAL_CLIENT_KEY`, `PAYPAL_SECRET_KEY`) are loaded from environment variables and applied globally via `paypal.configure()` in `src/controllers/paymentController.js`.
+
+The three steps of the flow are:
+
+1. **Create payment** — `POST /pay` calls `paypal.payment.create()` with a transaction object describing the amount, currency, and redirect URLs. On success, PayPal returns a list of links; the controller extracts the `approval_url` and redirects the user to PayPal's hosted checkout page.
+2. **User approves on PayPal** — The donor logs in to PayPal and confirms the payment. PayPal redirects back to `http://localhost:3000/success` with `paymentId` and `PayerID` query parameters.
+3. **Execute payment** — `GET /success` calls `paypal.payment.execute()` with the `paymentId` and `PayerID` to capture the funds. On success, the `success.hbs` template is rendered. If the user cancels, PayPal redirects to `GET /cancel` and `cancel.hbs` is shown instead.

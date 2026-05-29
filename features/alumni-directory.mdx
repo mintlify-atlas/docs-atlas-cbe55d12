@@ -1,0 +1,112 @@
+---
+title: "Alumni Directory: Search and Filter by Year, Degree, and Field"
+sidebarTitle: "Alumni Directory"
+description: "The GradGather alumni directory lets users search across the alumni network by name, graduation year, degree, and professional field with real-time filtering."
+---
+
+The alumni directory gives every GradGather user a searchable, filterable view of the alumni network. Users can type any combination of name, graduation year, degree programme, or professional field into a single search bar and immediately see matching alumni cards rendered on the page — no page reload required. The filtering logic runs entirely client-side in JavaScript, keeping the interaction fast and snappy.
+
+## Accessing the Directory
+
+The directory is served from a single Express route that renders the `directory.hbs` template:
+
+| Method | Path        | Description                          |
+|--------|-------------|--------------------------------------|
+| GET    | /directory  | Alumni directory with search & filter |
+
+```js
+// src/index.js
+app.get("/directory", (req, res) => {
+  res.render("directory");
+});
+```
+
+## Directory Data Structure
+
+The current implementation embeds a static `alumniData` array directly inside `directory.hbs`. Each object in the array contains four fields:
+
+```js
+// tempelates/directory.hbs — embedded alumni dataset
+const alumniData = [
+  { name: "Anay Singh",         year: 2015, degree: "Btech Computer Science", field: "Software Engineering" },
+  { name: "Vishal Chauhan",     year: 2018, degree: "Btech Computer Science", field: "Freelance web developer" },
+  { name: "Sandhya Yadav",      year: 2020, degree: "Btech Computer Science", field: "Data Analysis" },
+  { name: "Tushar Mukherjee",   year: 2017, degree: "Btech Computer Science", field: "Devops" },
+  { name: "Vishal Kumar",       year: 2019, degree: "BA Economics",           field: "Junior Android Developer" },
+];
+```
+
+| Field    | Type   | Description                                   |
+|----------|--------|-----------------------------------------------|
+| `name`   | String | Alumni's full name                            |
+| `year`   | Number | Graduation year                               |
+| `degree` | String | Degree programme (e.g., Btech Computer Science)|
+| `field`  | String | Current professional field or job title        |
+
+<Note>
+  The people recommender microservice (at `/recom`) also surfaces connection
+  suggestions based on shared professional interests. See the
+  [Recommender Overview](/recommender/overview) for details on how it
+  complements the directory.
+</Note>
+
+## Search and Filtering
+
+The filter bar at the top of the directory page accepts a single text input (`#searchInput`). Clicking the **Search** button triggers the `filterAlumni()` function, which performs a case-insensitive substring match across all four alumni fields:
+
+```js
+// tempelates/directory.hbs — filter logic
+function filterAlumni() {
+  const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+  const filteredData = alumniData.filter(alumni => {
+    return (
+      alumni.name.toLowerCase().includes(searchInput) ||
+      alumni.year.toString().includes(searchInput) ||
+      alumni.degree.toLowerCase().includes(searchInput) ||
+      alumni.field.toLowerCase().includes(searchInput)
+    );
+  });
+  loadAlumni(filteredData);
+}
+
+// Attach listener to the Search button
+document.getElementById('filterBtn').addEventListener('click', filterAlumni);
+```
+
+A user can search for `"2018"` to find alumni who graduated in 2018, or type `"devops"` to find alumni working in DevOps — the same input box handles all four fields simultaneously.
+
+## Rendering Alumni Cards
+
+When `filterAlumni()` produces a result set, it passes the filtered array to `loadAlumni(data)`. This function clears the `#alumniList` container and rebuilds it from scratch, creating one `div.alumni` DOM element per matching record:
+
+```js
+// tempelates/directory.hbs — card renderer
+function loadAlumni(data) {
+  const alumniList = document.getElementById('alumniList');
+  alumniList.innerHTML = '';  // Clear current list
+
+  data.forEach(alumni => {
+    const alumniElement = document.createElement('div');
+    alumniElement.classList.add('alumni');
+    alumniElement.innerHTML = `
+      <p><strong>Name:</strong> ${alumni.name}</p>
+      <p><strong>Year:</strong> ${alumni.year}</p>
+      <p><strong>Degree:</strong> ${alumni.degree}</p>
+      <p><strong>Field:</strong> ${alumni.field}</p>
+    `;
+    alumniList.appendChild(alumniElement);
+  });
+}
+
+// Load all alumni when the page first loads
+window.onload = function () {
+  loadAlumni(alumniData);
+};
+```
+
+On initial page load, `window.onload` calls `loadAlumni(alumniData)` with the full unfiltered dataset, so all alumni are visible before the user types anything.
+
+## Integration with the Recommender
+
+The people recommender microservice (accessible at `/recom`) provides an alternative discovery path. Rather than free-text search, it analyses shared technical interests across profiles and surfaces suggested connections automatically. See the [Recommender Overview](/recommender/overview) for integration details.

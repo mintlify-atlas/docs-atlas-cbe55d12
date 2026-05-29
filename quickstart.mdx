@@ -1,47 +1,133 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with GradGather in 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Clone the GradGather repo, install dependencies, configure environment variables, and run the platform locally in under five minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through getting a fully functional GradGather instance running on your local machine. By the end you will have the Express server started, a MongoDB database connected, and the BridgeU home page loading in your browser — ready for development or exploration.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+
+  <Step title="Prerequisites">
+    Make sure the following are available on your machine before you begin:
+
+    - **Node.js 18 or later** — [nodejs.org/en/download](https://nodejs.org/en/download)
+    - **npm** — bundled with Node.js
+    - **MongoDB** — either a local installation running on the default port (`27017`) or a hosted [MongoDB Atlas](https://www.mongodb.com/atlas) cluster URI
+
+    Verify your versions:
 
     ```bash
-    npm install your-package
+    node --version   # should print v18.x.x or higher
+    npm --version
+    mongod --version # if running MongoDB locally
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Clone the repository">
+    Clone the GradGather repository from GitHub and navigate into the project root:
 
     ```bash
-    your-cli init
+    git clone https://github.com/meenalsingh0/GradGather.git && cd GradGather
     ```
+
+    The project root contains `src/` (server code), `tempelates/` (Handlebars views), `public/` (static assets), and `package.json`.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Install dependencies">
+    Install all Node.js dependencies declared in `package.json`:
 
     ```bash
-    your-cli start
+    npm install
     ```
+
+    This pulls in the core packages the platform depends on:
+
+    | Package | Purpose |
+    |---|---|
+    | `express` | HTTP server and routing |
+    | `mongoose` | MongoDB ODM |
+    | `hbs` | Handlebars view engine for Express |
+    | `express-handlebars` | Extended Handlebars integration |
+    | `paypal-rest-sdk` | PayPal donation payment gateway |
+    | `dotenv` | Environment variable loading |
+    | `nodemon` | Auto-restart during development |
   </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env` file in the project root. GradGather reads this file automatically via `dotenv` on startup:
+
+    ```env
+    # Server
+    PORT=3000
+
+    # MongoDB — defaults to local instance if omitted
+    MONGODB_URI=mongodb://localhost:27017/LoginFormPractice
+
+    # PayPal REST SDK (required for the donation feature)
+    PAYPAL_MODE=sandbox
+    PAYPAL_CLIENT_KEY=your_paypal_client_id_here
+    PAYPAL_SECRET_KEY=your_paypal_secret_key_here
+    ```
+
+    <Note>
+      The default MongoDB connection string hard-coded in `src/mongo.js` is `mongodb://localhost:27017/LoginFormPractice`. If you run MongoDB locally with default settings and omit `MONGODB_URI`, the application will connect to this database automatically without any additional configuration.
+    </Note>
+
+    To use MongoDB Atlas instead, replace the `MONGODB_URI` value with your Atlas connection string:
+
+    ```env
+    MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/LoginFormPractice?retryWrites=true&w=majority
+    ```
+
+    For PayPal credentials, create a REST app in the [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/) and copy the **Client ID** and **Secret** for the sandbox environment.
+  </Step>
+
+  <Step title="Start the server">
+    You have two options depending on your workflow:
+
+    **Production / one-off run:**
+
+    ```bash
+    node src/index.js
+    ```
+
+    **Development (auto-restart on file changes):**
+
+    ```bash
+    nodemon src/index.js
+    ```
+
+    <Tip>
+      Use `nodemon src/index.js` while developing. nodemon watches the project for file changes and automatically restarts the Express server, so you never have to stop and re-run the process manually after editing a template or route.
+    </Tip>
+
+    A successful startup prints two lines to the console:
+
+    ```
+    mongoose connected
+    port connected
+    ```
+
+    If you see `failed` instead of `mongoose connected`, check that your MongoDB instance is running and that the connection string in `.env` (or the default in `src/mongo.js`) is reachable.
+  </Step>
+
+  <Step title="Open in your browser">
+    Navigate to [http://localhost:3000](http://localhost:3000) in your browser. You should see the **BridgeU** home page — a landing page with the BridgeU logo, a welcome message, and a **Join Our Community** call-to-action button that takes new visitors to the role-selection screen.
+
+    From there you can explore the app through the following paths:
+
+    | Path | Description |
+    |---|---|
+    | `/` | BridgeU home / landing page |
+    | `/2signup` | Role selection (Student or Alumni) |
+    | `/signup` | Account registration form |
+    | `/login` | Login form |
+    | `/directory` | Alumni directory |
+    | `/events` | Events listing |
+    | `/clubs` | Clubs listing |
+    | `/connect` | Connection hub |
+    | `/donation` | Donation page |
+  </Step>
+
 </Steps>
-
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>

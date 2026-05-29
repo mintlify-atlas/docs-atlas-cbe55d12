@@ -1,0 +1,146 @@
+---
+title: "Run GradGather Locally for Development"
+sidebarTitle: "Running Locally"
+description: "Step-by-step guide to running the full GradGather stack locally — Express server, MongoDB, and the optional Flask recommender microservice."
+---
+
+Running GradGather locally requires three components to be active at the same time: a MongoDB instance for user authentication, the Node.js/Express server for routing and page rendering, and — if you want interest-based people recommendations — the Python/Flask microservice. The Express server and MongoDB are always required; the Flask recommender is optional and can be skipped when working on any feature unrelated to the `/recom` endpoint.
+
+## Prerequisites
+
+Make sure the following tools are installed on your machine before proceeding:
+
+- **Node.js 18 or higher** — Download from [nodejs.org](https://nodejs.org). Verify with `node --version`.
+- **npm** — Bundled with Node.js. Verify with `npm --version`.
+- **MongoDB** — Either a local installation ([mongodb.com/try/download/community](https://www.mongodb.com/try/download/community)) or a free-tier [MongoDB Atlas](https://www.mongodb.com/atlas) cluster. GradGather connects to `mongodb://localhost:27017/LoginFormPractice` by default.
+- **Python 3.8+ and pip** — Only required if you intend to run the people recommender microservice. Verify with `python --version` and `pip --version`.
+
+## Starting the Main Application
+
+<Steps>
+  <Step title="Clone the repository and install dependencies">
+    ```bash
+    git clone https://github.com/meenalsingh0/GradGather.git
+    cd GradGather
+    npm install
+    ```
+    `npm install` reads `package.json` and installs all dependencies — Express, Handlebars (`hbs`), Mongoose, `paypal-rest-sdk`, `dotenv`, and more — into `node_modules/`.
+  </Step>
+  <Step title="Create the .env file">
+    Create a file named `.env` in the project root (next to `package.json`) with your configuration. At minimum you need:
+    ```env
+    # Server
+    PORT=3000
+
+    # PayPal (get credentials from https://developer.paypal.com/)
+    PAYPAL_MODE=sandbox
+    PAYPAL_CLIENT_KEY=your_paypal_client_id_here
+    PAYPAL_SECRET_KEY=your_paypal_secret_key_here
+    ```
+    See the [Environment Variables](/deployment/environment-variables) page for a full description of each key and how to obtain PayPal sandbox credentials.
+  </Step>
+  <Step title="Start MongoDB">
+    If you are running MongoDB locally, start the daemon in a separate terminal:
+    ```bash
+    mongod
+    ```
+    If you prefer to use MongoDB Atlas, create a free cluster, copy your connection string, and update the `mongoose.connect()` call in `src/mongo.js` (or set the `MONGODB_URI` environment variable as described in the [Environment Variables](/deployment/environment-variables) guide).
+  </Step>
+  <Step title="Start the Express server">
+    From the project root, start the server with hot-reload using nodemon (recommended during development):
+    ```bash
+    npx nodemon src/index.js
+    ```
+    Or start it once without auto-reload:
+    ```bash
+    node src/index.js
+    ```
+    When the server is ready you will see two confirmation messages in the terminal:
+    ```
+    mongoose connected
+    port connected
+    ```
+  </Step>
+  <Step title="Open the app in your browser">
+    Navigate to [http://localhost:3000](http://localhost:3000). You should see the BridgeU home page rendered by `tempelates/home.hbs`.
+  </Step>
+</Steps>
+
+## Starting the People Recommender (Optional)
+
+The Flask recommender lives in `tempelates/recom.py`. It reads `tempelates/people_recommender_dataset.csv`, computes cosine similarity between people based on their interest vectors, and serves results on `http://localhost:5000/recom`.
+
+<Steps>
+  <Step title="Install Python dependencies">
+    ```bash
+    pip install flask pandas scikit-learn flask-cors
+    ```
+  </Step>
+  <Step title="Navigate to the recommender directory">
+    The script expects `people_recommender_dataset.csv` to be in the same directory, so you must run it from inside `tempelates/`:
+    ```bash
+    cd tempelates
+    ```
+  </Step>
+  <Step title="Start the Flask server">
+    ```bash
+    python recom.py
+    ```
+    Flask will start in debug mode and print something like:
+    ```
+     * Running on http://127.0.0.1:5000
+    ```
+  </Step>
+  <Step title="Test the recommender endpoint">
+    The recommender API is now available at `http://localhost:5000/recom`. Send a request with a `person_name` query parameter matching a name in the dataset:
+    ```
+    GET http://localhost:5000/recom?person_name=Alice&n=5
+    ```
+    The response is a JSON object mapping the top-N similar people to their cosine similarity scores.
+  </Step>
+</Steps>
+
+## Available Routes After Startup
+
+Once the Express server is running, the following routes are registered and accessible:
+
+| Route | Description |
+|---|---|
+| `GET /` | BridgeU home page |
+| `GET /2signup` | Student / Alumni role selection |
+| `GET /signup` | Signup form |
+| `POST /signup` | Create a new user account in `LogInCollection` |
+| `GET /login` | Login form |
+| `POST /login` | Authenticate user against `LogInCollection` |
+| `GET /landing` | Alumni dashboard |
+| `GET /studash` | Student dashboard |
+| `GET /directory` | Alumni directory |
+| `GET /events` | Events listing |
+| `GET /clubs` | Clubs listing |
+| `GET /techno` | TechnoX club detail page |
+| `GET /connect` | Connect with alumni |
+| `GET /userprofile` | Alumni profile page |
+| `GET /stuprofile` | Student profile page |
+| `GET /donation` | Donation campaigns |
+| `GET /paymentGateway` | PayPal checkout page |
+| `POST /pay` | Initiate a PayPal payment and redirect to PayPal |
+| `GET /success` | Payment success — executes the PayPal payment |
+| `GET /cancel` | Payment cancelled by the user |
+
+## Development Tips
+
+<Tip>
+  **Use nodemon for faster iteration.** `npx nodemon src/index.js` watches all `.js` files in the project and automatically restarts the server whenever you save a change, so you never need to stop and restart manually.
+</Tip>
+
+<Tip>
+  **Watch the terminal for startup confirmation.** The server prints `port connected` as soon as Express begins listening and `mongoose connected` once Mongoose establishes its connection to MongoDB. If you only see `port connected` but not `mongoose connected`, check that `mongod` is running and reachable on port 27017.
+</Tip>
+
+<Tip>
+  **CSS changes take effect immediately.** Stylesheets for each page live in `public/css/` (e.g. `public/css/directory.css`) and are served as plain static files by `express.static`. There is no build or compilation step — just save the CSS file and refresh the browser.
+</Tip>
+
+<Note>
+  The templates directory is named **`tempelates`** — with the letters transposed. This is not a typo to be corrected; it is the name used throughout the source code and must remain consistent across the `src/index.js` path resolution, the `tempelates/` folder on disk, and any tooling (e.g. nodemon watch config) you add later.
+</Note>

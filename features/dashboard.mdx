@@ -1,0 +1,116 @@
+---
+title: "Dashboards: Alumni and Student Home Screens"
+sidebarTitle: "Dashboard"
+description: "GradGather provides role-specific dashboards — the Alumni Dashboard highlights connection and contribution features, while the Student Dashboard focuses on mentorship and career growth."
+---
+
+GradGather surfaces a different home screen depending on the user's role. Alumni are directed to the Alumni Dashboard at `/landing`, while students land on the Student Dashboard at `/studash`. Each dashboard presents a hero section and a four-card feature grid that links out to the platform's core functionality. Navigation links in the top navbar differ between the two views to reflect the features most relevant to each role.
+
+<CardGroup cols={2}>
+  <Card title="Alumni Dashboard" icon="user-graduate">
+    Route: `GET /landing` — showcases alumni networking, the alumni directory, job postings, and donation features. Navbar includes a direct link to `/connect` and `/userprofile`.
+  </Card>
+  <Card title="Student Dashboard" icon="book-open">
+    Route: `GET /studash` — welcomes the student by name using the `{{naming}}` variable and highlights student-to-alumni connection, the shared directory, job openings, and club fundraising.
+  </Card>
+</CardGroup>
+
+## Alumni Dashboard (`/landing`)
+
+The alumni dashboard renders `landing.hbs`. Its hero section displays a static welcome message — "Welcome, John!" — along with the tagline "Reconnect, grow, and contribute to the alumni community." Below the hero, a `feature-grid` presents four cards that map to the platform's main capabilities:
+
+- **Alumni-to-Alumni Connection** — Engage and connect with fellow alumni across industries and locations.
+- **Alumni Directory & Filtering** — Search for alumni using a comprehensive directory with filters for batch, course, and more.
+- **Job Openings Posting** — Share or explore job opportunities within the alumni network.
+- **Donations for Clubs & Scholarships** — Contribute to clubs, scholarships, or causes and help future students.
+
+The alumni dashboard navbar contains the following links:
+
+| Label            | Path             |
+|------------------|------------------|
+| Events           | /Events          |
+| Forum            | #                |
+| Clubs            | /clubs           |
+| Connect          | /connect         |
+| Alumni Directory | /directory       |
+| Profile          | /userprofile     |
+
+<Tip>
+  The **Forum** nav link currently points to `href="#"` and is not yet
+  implemented. It is a placeholder for a future discussion board feature.
+</Tip>
+
+## Student Dashboard (`/studash`)
+
+The student dashboard renders `studash.hbs`. Unlike the alumni dashboard, the hero section uses the `{{naming}}` Handlebars variable so the welcome message is personalised at render time — for example, "Welcome Alice". The tagline reads "Reconnect, grow, and contribute to the student community."
+
+The four feature cards on the student dashboard reflect a student-centric perspective:
+
+- **Student-to-Alumni Connection** — Engage and connect with alumni across industries and locations.
+- **Alumni/Student Directory & Filtering** — Search the directory with filters for batch, course, and more.
+- **Job Openings** — Explore opportunities within the network to grow your career.
+- **Donations for Clubs & Scholarship Fundraising** — Contribute to clubs, scholarships, or causes that resonate with you.
+
+The student dashboard navbar is a trimmed version of the alumni navbar — it omits the Connect link and points the profile link to `/stuprofile` instead:
+
+| Label      | Path        |
+|------------|-------------|
+| Events     | /Events     |
+| Forum      | #           |
+| Clubs      | /clubs      |
+| Directory  | /directory  |
+| My Profile | /stuprofile |
+
+```hbs
+<!-- tempelates/studash.hbs — hero section with Handlebars variable -->
+<section class="hero">
+  <div class="container">
+    <h1>Welcome {{naming}}</h1>
+    <p>Reconnect, grow, and contribute to the student community.</p>
+  </div>
+</section>
+```
+
+## User Profiles
+
+GradGather provides two separate profile views, one for each role.
+
+### Alumni Profile (`/userprofile`)
+
+The alumni profile renders `userprofile.hbs` and displays the following static fields:
+
+| Field                            | Example Value                                 |
+|----------------------------------|-----------------------------------------------|
+| Full Name                        | John Doe                                      |
+| College Name                     | ABC University                                |
+| Batch                            | 2020–2024                                     |
+| Course                           | Bachelor of Technology                        |
+| Section                          | CSE-2                                         |
+| Email                            | john.doe@example.com                          |
+| Alumni Status                    | Active                                        |
+| Graduation Year                  | 2024                                          |
+| Position in Alumni Association   | Event Coordinator                             |
+| Recent Activity                  | Participated in the Annual Tech Conference 2024 |
+
+The profile footer includes two action buttons: **Edit Profile** and **Contact Alumni**.
+
+### Student Profile (`/stuprofile`)
+
+The student profile renders `stuprofile.hbs` and uses three Handlebars variables to inject dynamic data that originates from the signup form:
+
+```hbs
+<!-- tempelates/stuprofile.hbs — dynamic fields -->
+<h1>Welcome, <span id="user-name">{{naming}}</span>!</h1>
+...
+<li><strong>Full Name:</strong> {{naming}}</li>
+<li><strong>Email:</strong> {{emailing}}</li>
+<li><strong>Graduation Year:</strong> {{passing}}</li>
+```
+
+| Handlebars Variable | Source Field     | Description                  |
+|---------------------|------------------|------------------------------|
+| `{{naming}}`        | `req.body.username`  | Student's display name       |
+| `{{emailing}}`      | `req.body.email`     | Student's email address      |
+| `{{passing}}`       | `req.body.passOutYear` | Expected graduation year   |
+
+The remaining profile fields (College Name, Batch, Course, Section, Club, Recent Activity) are present in the template but not yet populated dynamically.

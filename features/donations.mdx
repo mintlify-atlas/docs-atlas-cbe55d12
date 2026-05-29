@@ -1,0 +1,177 @@
+---
+title: "Donations: Fund Clubs and Scholarships via PayPal"
+sidebarTitle: "Donations"
+description: "GradGather's donation portal lets alumni contribute to university clubs and social causes through an integrated PayPal payment flow with sandbox and live mode support."
+---
+
+GradGather's donation portal lets alumni turn goodwill into direct financial support for university clubs, scholarships, and social initiatives. The portal lists active campaigns at `/donation`, then routes contributors through a PayPal-powered checkout. The integration uses the `paypal-rest-sdk` and supports both sandbox testing and live production modes, controlled entirely through environment variables.
+
+## Donation Campaigns
+
+The campaigns page is served at `GET /donation` and renders `donation.hbs`. Five campaigns are currently listed, each presented as a `.donation-card` with a title, a description, and a **Donate Now** button.
+
+```js
+// src/index.js
+app.get("/donation", (req, res) => {
+  res.render("donation");
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Hackhound Club Hackathon" icon="code">
+    Support the Hackhound Club in organizing the annual hackathon. Your donation will help cover event costs, participant swag, and more.
+  </Card>
+  <Card title="Green Earth Initiative" icon="leaf">
+    Contribute to environmental conservation with the Green Earth Initiative. Funds will be used for tree planting and waste reduction programs.
+  </Card>
+  <Card title="Literacy for All Campaign" icon="book">
+    Help improve literacy rates by supporting the Literacy for All Campaign. Donations will fund educational resources and training programs.
+  </Card>
+  <Card title="Tech for Kids Foundation" icon="laptop">
+    Support the Tech for Kids Foundation in providing technology and educational resources to underprivileged children.
+  </Card>
+  <Card title="Veterans Support Fund" icon="shield">
+    Assist veterans in transitioning back to civilian life. Your donation will aid in job training and mental health services.
+  </Card>
+</CardGroup>
+
+Clicking **Donate Now** on any campaign card calls the `donate(eventName)` JavaScript function, which logs the campaign name to the console and redirects the browser to `/paymentGateway`:
+
+```js
+// tempelates/donation.hbs — donate button handler
+function donate(eventName) {
+  console.log("Donating to: " + eventName);
+  window.location.href = "/paymentGateway";
+}
+```
+
+## Payment Flow
+
+The full end-to-end PayPal payment sequence involves five routes spread across the front-end redirect and the PayPal REST API callbacks:
+
+<Steps>
+  <Step title="User clicks Donate Now">
+    The `donate(eventName)` function is called with the campaign name. The browser is redirected to `GET /paymentGateway`.
+  </Step>
+  <Step title="Payment Gateway page rendered">
+    `/paymentGateway` renders `paymentGateway.hbs`, which presents a form where the user enters an amount and selects a payment gateway (PayPal, Stripe, Razorpay, or PayU). Submitting the form sends a `POST` request to `/pay`.
+  </Step>
+  <Step title="PayPal payment created">
+    The `POST /pay` handler in `paymentController.js` calls `paypal.payment.create()` with the `create_payment_json` payload. On success, it iterates over the returned links and redirects the user to PayPal's `approval_url`.
+  </Step>
+  <Step title="User approves on PayPal">
+    The user logs in to their PayPal account (or guest checkout) and approves the payment. PayPal redirects back to the `return_url` — `http://localhost:3000/success` — appending `PayerID` and `paymentId` as query parameters.
+  </Step>
+  <Step title="Payment executed on success callback">
+    `GET /success` calls `paypal.payment.execute(paymentId, execute_payment_json)` using the query parameters from PayPal. On a successful execution the `success.hbs` view is rendered.
+  </Step>
+  <Step title="Payment cancelled">
+    If the user cancels on PayPal, they are redirected to `GET /cancel`, which renders the `cancel.hbs` view.
+  </Step>
+</Steps>
+
+## Routes Reference
+
+| Method | Path             | Description                          |
+|--------|------------------|--------------------------------------|
+| GET    | /donation        | Donation campaigns listing           |
+| GET    | /paymentGateway  | PayPal checkout page                 |
+| POST   | /pay             | Initiate PayPal payment              |
+| GET    | /success         | Payment success callback             |
+| GET    | /cancel          | Payment cancel callback              |
+
+## PayPal Configuration
+
+The `paypal-rest-sdk` is configured in `src/controllers/paymentController.js` using three environment variables:
+
+```js
+// src/controllers/paymentController.js — PayPal configuration
+const paypal = require('paypal-rest-sdk');
+
+const { PAYPAL_MODE, PAYPAL_CLIENT_KEY, PAYPAL_SECRET_KEY } = process.env;
+
+paypal.configure({
+  'mode': PAYPAL_MODE,           // 'sandbox' or 'live'
+  'client_id': PAYPAL_CLIENT_KEY,
+  'client_secret': PAYPAL_SECRET_KEY
+});
+```
+
+| Environment Variable  | Description                                      |
+|-----------------------|--------------------------------------------------|
+| `PAYPAL_MODE`         | `sandbox` for testing, `live` for production     |
+| `PAYPAL_CLIENT_KEY`   | PayPal REST API Client ID                        |
+| `PAYPAL_SECRET_KEY`   | PayPal REST API Secret Key                       |
+
+<Tip>
+  To obtain sandbox credentials, log in to the [PayPal Developer Portal](https://developer.paypal.com), navigate to **My Apps & Credentials**, and create a new app under the **Sandbox** tab. The portal provides a Client ID and Secret you can use directly in your `.env` file with `PAYPAL_MODE=sandbox`. Switch both the credentials and the mode to `live` when deploying to production.
+</Tip>
+
+## Payment Payload
+
+The `create_payment_json` object sent to `paypal.payment.create()` defines the payment intent, redirect URLs, item details, and total amount:
+
+```js
+// src/controllers/paymentController.js — create_payment_json
+const create_payment_json = {
+  "intent": "sale",
+  "payer": {
+    "payment_method": "paypal"
+  },
+  "redirect_urls": {
+    "return_url": "http://localhost:3000/success",
+    "cancel_url": "http://localhost:3000/cancel"
+  },
+  "transactions": [{
+    "item_list": {
+      "items": [{
+        "name": "Book",
+        "sku": "001",
+        "price": "25.00",
+        "currency": "USD",
+        "quantity": 1
+      }]
+    },
+    "amount": {
+      "currency": "USD",
+      "total": "25.00"
+    },
+    "description": "Hat for the best team ever"
+  }]
+};
+```
+
+<Warning>
+  The payment amount is **hardcoded to $25.00 USD** in `paymentController.js`.
+  For a production deployment, update the `payProduct` handler to read the
+  amount from `req.body.amount` (which is already submitted by the
+  `paymentGateway.hbs` form) and pass it dynamically into both the
+  `create_payment_json` item price/total and the `execute_payment_json` total.
+  Also update the item `name` and `description` fields to reflect the actual
+  donation campaign selected.
+</Warning>
+
+The success callback constructs its own `execute_payment_json` using the `PayerID` returned by PayPal and the same hardcoded total:
+
+```js
+// src/controllers/paymentController.js — execute_payment_json
+const execute_payment_json = {
+  "payer_id": payerId,
+  "transactions": [{
+    "amount": {
+      "currency": "USD",
+      "total": "25.00"
+    }
+  }]
+};
+
+paypal.payment.execute(paymentId, execute_payment_json, function (error, payment) {
+  if (error) {
+    console.log(error.response);
+    throw error;
+  } else {
+    console.log(JSON.stringify(payment));
+    res.render('success');
+  }
+});
+```

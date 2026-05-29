@@ -1,0 +1,189 @@
+---
+title: "Recommender API: GET /recom Endpoint Reference"
+sidebarTitle: "API Reference"
+description: "Complete reference for the GradGather people recommender Flask API. GET /recom accepts a person name and count, returning cosine similarity scores for the top N matched profiles."
+---
+
+The GradGather recommender exposes a single REST endpoint served by a Flask development server. It accepts a person's name and an optional result count, then returns a JSON object mapping the most similar profiles to their cosine similarity scores. The endpoint is intentionally lightweight — no authentication, no pagination, no request body — making it easy to call from any part of the frontend or to test directly with `curl`.
+
+---
+
+## Base URL
+
+```
+http://localhost:5000
+```
+
+The Flask server runs in debug mode on the default port `5000`. This is a development server; for production deployments the base URL and port would be updated to reflect the hosting environment.
+
+<Info>
+  The main GradGather Node.js application runs on `http://localhost:3000`. Both servers must be running simultaneously for the recommender UI to function. See the [Overview](/recommender/overview) for startup instructions.
+</Info>
+
+---
+
+## GET /recom
+
+Returns the top N most similar people to the specified person, ranked by cosine similarity score in descending order.
+
+**Method:** `GET`  
+**Path:** `/recom`
+
+### Query Parameters
+
+<ParamField query="person_name" type="string" required>
+  The full name of the person to find recommendations for. The value must match a `Person` entry in the loaded CSV dataset **exactly**, including capitalisation and spacing. URL-encode names that contain spaces (e.g. `Meenal+Singh` or `Meenal%20Singh`).
+</ParamField>
+
+<ParamField query="n" type="integer" default="5">
+  The number of recommendations to return. Defaults to `5` when omitted. The server parses this with `int(request.args.get('n', 5))`, so non-integer values will raise a `ValueError` at runtime.
+</ParamField>
+
+---
+
+### Example Request
+
+```bash
+curl "http://localhost:5000/recom?person_name=Meenal+Singh&n=3"
+```
+
+---
+
+### Example Success Response
+
+The response is a flat JSON object. Each key is a person's name and each value is their cosine similarity score — a float between `0.0` (no shared interests) and `1.0` (identical interest profile). Results are pre-sorted in descending order by score.
+
+```json
+{
+  "Parinita Singh": 0.9428090415820634,
+  "G. Nandini": 0.9258200997766262,
+  "Sandhya Yadav": 0.8944271909999159
+}
+```
+
+---
+
+### Error Responses
+
+The API returns a JSON error object for two failure conditions.
+
+**Missing `person_name` parameter — HTTP 400**
+
+Returned when the `person_name` query parameter is absent entirely.
+
+```json
+{
+  "error": "Please provide a person_name"
+}
+```
+
+**Person not found in dataset — HTTP 200 with error body**
+
+Returned when `person_name` is present but does not match any row in the loaded CSV. Note that the HTTP status code is `200` in this case, since the Flask route handler returns the dictionary directly without setting a status code for this branch.
+
+```json
+{
+  "error": "Person 'Unknown Name' not found in the dataset."
+}
+```
+
+<Warning>
+  Name matching is case-sensitive and exact. `meenal singh` will not match `Meenal Singh`. Always use the exact string as it appears in the CSV, and URL-encode spaces as `+` or `%20`.
+</Warning>
+
+---
+
+## How Scores Are Calculated
+
+Cosine similarity measures the angle between two vectors in multi-dimensional space — in this case, each person's binary interest vector.
+
+For two people **A** and **B** with interest vectors **a** and **b**:
+
+```
+cosine_similarity(a, b) = (a · b) / (‖a‖ × ‖b‖)
+```
+
+- A score of **1.0** means the two people have identical interests (their vectors point in exactly the same direction).
+- A score of **0.0** means they share no interests at all (their vectors are perpendicular).
+- All real matches fall somewhere between these extremes.
+
+Because the interest values are binary (`0` or `1`), the dot product `a · b` is simply the count of interests both people share. The denominator normalises for the total number of interests each person holds, so someone with five interests matching another person's five interests scores higher than if one of them had fifteen interests and only matched five.
+
+<CardGroup cols={2}>
+  <Card title="Identical profiles" icon="equals">
+    Two people with the exact same set of interests score **1.0**, regardless of how many interests they share in total.
+  </Card>
+  <Card title="No shared interests" icon="xmark">
+    Two people with completely disjoint interest sets score **0.0** — their vectors are orthogonal.
+  </Card>
+</CardGroup>
+
+---
+
+## Adding People to the Dataset
+
+The recommender reads its data at startup, so adding a new person is a matter of appending a row to the CSV file and restarting the Flask server.
+
+### CSV Structure
+
+Each row must follow this schema exactly (column order matters):
+
+```csv
+Person,Machine Learning,Data Science,Python,Web Development,JavaScript,React,HTML,CSS,AI,Natural Language Processing,Deep Learning,Mysql
+```
+
+Set each interest column to `1` (has the interest) or `0` (does not). The `Mysql` column is present in `people/database.csv` but **not** in `tempelates/people_recommender_dataset.csv` — make sure you add to the correct file for the server instance you are running.
+
+### Example: Adding a New Profile
+
+```csv
+Jordan Blake,1,1,1,0,0,0,0,0,1,1,1,0
+```
+
+This entry marks Jordan Blake as interested in Machine Learning, Data Science, Python, AI, Natural Language Processing, and Deep Learning, with all other flags set to `0`.
+
+After saving the file:
+
+```bash
+# Restart the Flask server to reload the dataset
+python recom.py
+```
+
+<Note>
+  The similarity matrix is recomputed from scratch on every server start. There is no incremental update mechanism — adding one person recalculates all pairwise scores across the entire dataset.
+</Note>
+
+---
+
+## Example: Fetching Recommendations from JavaScript
+
+The following snippet mirrors the pattern used in `tempelates/recom.js` and can be dropped into any part of the GradGather frontend.
+
+```js
+const personName = 'Meenal Singh';
+
+const response = await fetch(
+  `http://localhost:5000/recom?person_name=${encodeURIComponent(personName)}&n=5`,
+  { mode: 'cors' }
+);
+
+const recommendations = await response.json();
+console.log(recommendations);
+// {
+//   "Parinita Singh": 0.9428090415820634,
+//   "G. Nandini": 0.9258200997766262,
+//   "Sandhya Yadav": 0.8944271909999159,
+//   ...
+// }
+
+// Iterate over results
+for (const [person, score] of Object.entries(recommendations)) {
+  console.log(`${person} — similarity: ${score.toFixed(2)}`);
+}
+```
+
+The `mode: 'cors'` option is required because the frontend origin (`localhost:3000`) differs from the API origin (`localhost:5000`). Flask's `CORS(app)` configuration permits this cross-origin request.
+
+<Tip>
+  For richer, more meaningful suggestions, run the recommender against `people/database.csv` (used by `people/shreyas/recom.py`). It contains 19 real GradGather team member profiles — including alumni entries such as Anay Singh, Vishal Chauhan, and Sandhya Yadav — spread across all twelve interest categories, giving the similarity algorithm a much denser graph to work with than the default template dataset.
+</Tip>

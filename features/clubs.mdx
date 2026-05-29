@@ -1,0 +1,98 @@
+---
+title: "University Clubs: Join, Explore, and Support Campus Societies"
+sidebarTitle: "Clubs"
+description: "GradGather features four university clubs — TechnoX, Bizeco, NSS Club, and Niyantran — alumni can explore, support, and donate to each through the platform."
+---
+
+GradGather's Clubs section highlights the university's active societies, giving alumni a way to stay connected with campus life and financially support the communities that shaped them. The clubs listing page presents all four societies in a responsive grid, and clicking through to an individual club page reveals full details, alumni testimonials, and a direct path to making a donation.
+
+## Clubs Listing
+
+The clubs listing page is served at `GET /clubs` and renders `clubs.hbs`. It displays the four university clubs in a four-column CSS grid, each club represented by a logo image, a name, a category label, and a short description.
+
+```js
+// src/index.js
+app.get("/clubs", (req, res) => {
+  res.render("clubs");
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="TechnoX" icon="microchip">
+    **Technical Society** — TechnoX is a vibrant college technical society that fosters innovation, hosts workshops, and organizes events to enhance technical skills and knowledge among students. Links to `/techno` for the full club detail page.
+  </Card>
+  <Card title="Bizeco" icon="briefcase">
+    **Entrepreneurship Society** — A dynamic college entrepreneurship society fostering innovation, providing resources, and mentoring students to develop and launch impactful startup ideas and ventures.
+  </Card>
+  <Card title="NSS Club" icon="hands-helping">
+    **Social Service** — The NSS Club promotes community service through volunteerism, addressing social issues, and fostering a spirit of empathy and social responsibility among students.
+  </Card>
+  <Card title="Niyantran" icon="spa">
+    **Yoga & Wellness Club** — Niyantran promotes holistic well-being through yoga, mindfulness, and wellness practices for a balanced and healthy student life.
+  </Card>
+</CardGroup>
+
+```hbs
+<!-- tempelates/clubs.hbs — clubs grid (excerpt) -->
+<div class="grid">
+  <div class="box">
+    <a href="/techno">
+      <img src="images/clubs/tech.png" alt="TechnoX">
+      <h3><b>TechnoX</b><br><i>Technical Society</i></h3>
+      <p>TechnoX is a vibrant college technical society that fosters innovation,
+         hosts workshops, and organizes events to enhance technical skills and
+         knowledge among students.</p>
+    </a>
+  </div>
+  <div class="box">
+    <a href="techno.html">
+      <img src="images/clubs/entre.png" alt="Bizeco">
+      <h3><b>Bizeco</b><br><i>Entrepreneurship Society</i></h3>
+      <p>Bizeco is a dynamic college entrepreneurship society fostering innovation,
+         providing resources, and mentoring students to develop and launch
+         impactful startup ideas and ventures.</p>
+    </a>
+  </div>
+  <!-- NSS Club and Niyantran follow the same pattern -->
+</div>
+```
+
+## TechnoX Club Detail (`/techno`)
+
+Clicking the TechnoX card navigates to `/techno`, which renders `techno.hbs` — a dedicated landing page for the technical society. The page is structured into five sections:
+
+<Steps>
+  <Step title="Hero">
+    A full-width hero banner with the heading **"Welcome to TechnoX"** and the tagline "Where innovation meets collaboration. Empowering future leaders to make an impact through technology."
+  </Step>
+  <Step title="About">
+    A prose section describing the club: "Founded in 2015, TechnoX is a college club focused on fostering technological innovation and entrepreneurship among students. Our mission is to empower students to turn ideas into impactful projects and startups."
+  </Step>
+  <Step title="Core Values">
+    A three-column values grid presenting **Innovation** (out-of-the-box thinking and creativity), **Collaboration** (teamwork at the core of every solution), and **Impact** (projects that address real-world challenges).
+  </Step>
+  <Step title="Alumni Members">
+    A section titled "Our Alumni" with a short paragraph noting that TechnoX alumni have gone on to lead tech companies, start businesses, and hold influential roles at global organisations.
+  </Step>
+  <Step title="Donate Now">
+    A "Support TechnoX" section with a **Donate Now** button. Clicking the button calls `openDonation()`, which redirects the user to `/paymentGateway`.
+
+    ```js
+    // tempelates/techno.hbs — donate button handler
+    function openDonation() {
+      window.location.href = "/paymentGateway";
+    }
+    ```
+  </Step>
+</Steps>
+
+## Supporting Clubs
+
+Alumni can contribute to any of the four clubs through the Donations page. Campaigns for club hackathons and initiatives are listed at `/donation`. See the [Donations](/features/donations) page for the full payment flow.
+
+## Routes Reference
+
+| Method | Path     | Description             |
+|--------|----------|-------------------------|
+| GET    | /clubs   | All clubs listing       |
+| GET    | /techno  | TechnoX club detail     |

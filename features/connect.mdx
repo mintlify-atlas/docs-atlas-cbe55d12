@@ -1,0 +1,106 @@
+---
+title: "Connect: Discover and Network with Alumni"
+sidebarTitle: "Connect"
+description: "The Connect page in GradGather surfaces alumni profiles as cards — users can browse professionals by company and role, and send connection requests."
+---
+
+The Connect page is GradGather's core networking hub. It presents alumni profiles as a responsive card grid so that students and fellow alumni can quickly scan the network, identify professionals by company and role, and express interest in connecting. Each card shows a photo, the person's name, their current job title and employer, and a Connect button for initiating contact.
+
+## Accessing Connect
+
+The Connect page is served from a dedicated Express route that renders `connect.hbs`:
+
+| Method | Path      | Description                              |
+|--------|-----------|------------------------------------------|
+| GET    | /connect  | Connect page with people cards           |
+
+```js
+// src/index.js
+app.get("/connect", (req, res) => {
+  res.render("connect");
+});
+```
+
+## People Cards
+
+The page renders a `connect-grid` div that contains one `.person-card` element per alumni profile. Each card includes a profile photo, a full name heading, a job title and company paragraph, and a Connect button.
+
+The three alumni profiles currently displayed are:
+
+<CardGroup cols={3}>
+  <Card title="John Doe" icon="user">
+    Software Engineer at Google
+  </Card>
+  <Card title="Jane Smith" icon="user">
+    Product Manager at Facebook
+  </Card>
+  <Card title="Bob Johnson" icon="user">
+    Data Scientist at Amazon
+  </Card>
+</CardGroup>
+
+```hbs
+<!-- tempelates/connect.hbs — people card markup -->
+<section class="connect-section">
+  <h1>People You Can Connect With</h1>
+  <div class="connect-grid">
+    <div class="person-card">
+      <img src="images\person\person1.jpg" alt="Person 1">
+      <h2>John Doe</h2>
+      <p>Software Engineer at Google</p>
+      <button>Connect</button>
+    </div>
+    <div class="person-card">
+      <img src="images\person\person2.jpg" alt="Person 2">
+      <h2>Jane Smith</h2>
+      <p>Product Manager at Facebook</p>
+      <button>Connect</button>
+    </div>
+    <div class="person-card">
+      <img src="images\person\person3.jpg" alt="Person 3">
+      <h2>Bob Johnson</h2>
+      <p>Data Scientist at Amazon</p>
+      <button>Connect</button>
+    </div>
+  </div>
+</section>
+```
+
+<Note>
+  The **Connect** button on each card is currently a UI scaffold — it does not
+  yet trigger a backend connection request workflow. Clicking it has no effect
+  server-side. A future implementation would `POST` to a connections endpoint,
+  storing a pending request document in MongoDB and notifying the recipient.
+</Note>
+
+## Navigation
+
+The Connect page includes the full alumni navbar styled with a purple (`#a781f5`) background. The navbar links are identical to those on the alumni dashboard:
+
+| Label            | Path           |
+|------------------|----------------|
+| Events           | /Events        |
+| Forum            | #              |
+| Clubs            | /clubs         |
+| Connect          | /connect       |
+| Alumni Directory | /directory     |
+| Profile          | /userprofile   |
+
+```hbs
+<!-- tempelates/connect.hbs — navbar with purple background -->
+<nav class="navbar">
+  <div class="logo">BridgeU</div>
+  <ul class="nav-links">
+    <li><a href="/Events">Events</a></li>
+    <li><a href="#">Forum</a></li>
+    <li><a href="/clubs">Clubs</a></li>
+    <li><a href="/connect">Connect</a></li>
+    <li><a href="/directory">Alumni Directory</a></li>
+    <li><a href="/userprofile">Profile</a></li>
+  </ul>
+</nav>
+```
+
+## Interest-Based Recommendations
+
+Beyond manually browsing the Connect grid, GradGather includes a people recommender microservice accessible at `/recom`. The recommender analyses shared technical interests across user profiles to surface smarter connection suggestions — surfacing alumni you are most likely to benefit from connecting with, rather than presenting every profile in the network. See the [Recommender Overview](/recommender/overview) for integration details and how to extend the dataset.
